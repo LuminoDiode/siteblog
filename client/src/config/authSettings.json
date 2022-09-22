@@ -1,0 +1,7 @@
+{
+    "passwordMustContainDigits":false, 
+    "passwordMustContainLowerCase":false,
+    "passwordMustContainUpperCase":false,
+    "passwordMinLength":6,
+    "passwordMaxLength":128
+}
