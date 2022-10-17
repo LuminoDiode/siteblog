@@ -2,16 +2,17 @@ import React, { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 import Modal from "react-modal"
 import { authHelper } from "src/helpers/authHelper";
+import jwtInfo from "src/models/jwtInfo";
 
 
-import apiHelper, { authCredentials } from "../../../../helpers/apiHelper"
-import jwtHelper, { jwtInfo } from "../../../../helpers/jwtHelper"
+import apiHelper from "../../../../helpers/apiHelper"
+import jwtHelper from "../../../../helpers/jwtHelper"
 
 import CredentialsInputGroup, { credsInputGroupFuncs, credsInputGroupInits } from '../credentialsInputGroup/CredentialsInputGroup';
 
 import classes from "./LoginButton.module.css";
 
-interface LoginButtonProps {
+export interface LoginButtonProps {
     submitCallback?: (creds: credsInputGroupFuncs) => void;
     inputGroups?: Array<credsInputGroupInits>,
     replaceWithCredential?: boolean,
@@ -94,14 +95,13 @@ const LoginButton: React.FC<LoginButtonProps> = (props) => {
                             onRequestClose={() => setLoginModalOpen(false)}
                         >
                             {(inpGroups ?? [new credsInputGroupInits()]).map((gr, index) =>
-                                <span>
+                                <span key={index}>
                                     {index > 0 ?
                                         <span style={{ marginTop: "2vh", display: "block" }} />
                                         :
                                         <span />
                                     }
-                                    <CredentialsInputGroup submitCallback={creds => submit(creds)} groupParams={gr} key={index} />
-
+                                    <CredentialsInputGroup submitCallback={creds => submit(creds)} groupParams={gr} />
                                 </span>
                             )}
                         </Modal>

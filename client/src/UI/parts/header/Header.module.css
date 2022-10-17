@@ -5,8 +5,8 @@
 
     border-bottom: 1px solid lightgray;
     box-shadow: 0px 0px 10px lightgray;
-    margin-bottom: 10px;
-    
+
+    z-index: 2;
     background-color: whitesmoke;
     justify-items: space-between;
 }
@@ -26,6 +26,7 @@
     font-size: calc(1vh + 24px);
     font-weight: 400;
     color:rgb(75, 75, 75);
+    text-decoration: none;
 }
 .appHeaderText:hover{
     color:black;

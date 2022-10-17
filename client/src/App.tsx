@@ -4,6 +4,7 @@ import Header from './UI/parts/header/Header';
 import Main from './UI/parts/main/Main';
 import Modal from 'react-modal';
 import "./App.css"
+import { BrowserRouter } from 'react-router-dom';
 
 
 function App() {
@@ -11,9 +12,11 @@ function App() {
 
   return (
     <span className="App">
-      <Header/>
-      <Main/>
-      <Footer/>
+      <BrowserRouter>
+        <Header />
+        <Main />
+        <Footer />
+      </BrowserRouter>
     </span>
   );
 }

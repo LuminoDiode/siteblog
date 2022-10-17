@@ -1,20 +1,7 @@
 import jwtDecode from "jwt-decode";
+import jwtInfo from "src/models/jwtInfo";
 
 
-export enum userRoles {
-    user = "user",
-    moderator = "moderator",
-    admin = "admin"
-}
-export class jwtInfo {
-    id?: string | number;
-    email?: string;
-    username?: string;
-    role?: string | userRoles;
-    nbf?: number;
-    exp?: number;
-    iat?: null;
-}
 
 export default class jwtHelper {
     public static Validate = (jwt: string) => {

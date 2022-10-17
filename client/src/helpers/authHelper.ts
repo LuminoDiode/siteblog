@@ -1,9 +1,10 @@
+import authRequest from "src/models/authRequest";
 import { credsInputGroupFuncs } from "../UI/components/auth/credentialsInputGroup/CredentialsInputGroup";
-import apiHelper, { authCredentials } from "./apiHelper";
+import apiHelper from "./apiHelper";
 
 export class authHelper{
     static proceedAuth = async (creds: credsInputGroupFuncs) => {
-        const sendedInfo = new authCredentials();
+        const sendedInfo = new authRequest();
         sendedInfo.email = creds.getEmail();
         sendedInfo.password = creds.getPassword();
 
@@ -17,7 +18,7 @@ export class authHelper{
         } else {
             if (apiResponse.humanNotification ?? false) {
                 if (creds.setAlerts) {
-                    creds.setAlerts([...creds.getAlerts!(), apiResponse.humanNotification!]);
+                    creds.setAlerts([...creds.getAlerts!(), apiResponse.humanNotification?.message!]);
                 }
             }
         }

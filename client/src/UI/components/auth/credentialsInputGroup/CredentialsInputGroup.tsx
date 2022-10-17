@@ -62,7 +62,7 @@ export class credsInputGroupFuncs {
 /**
  * @param submitCallback Function to be called with entered credentials on sumbit button click.
  * @param groupParams Text which is showed before the inputs; Text in the submit button (default is "submit"); Alerts shown under the button.
- * @param prop Props to be inserted into the root element of the component.
+ * @param props Props to be inserted into the root element of the component.
  * @returns Authentication credentials: email and password.
  */
 const CredentialsInputGroup: React.FC<{
