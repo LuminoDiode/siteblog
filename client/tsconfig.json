@@ -1,26 +1,34 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "baseUrl": ".",
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "target": "es6",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "allowJs": false,
+    "checkJs": false,
+    "skipLibCheck": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution":  "nodenext",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "moduleDetection": "force",
+    "noImplicitAny": true
   },
   "include": [
-    "src"
-  ]
+    "src/**/*.ts", 
+    "src/**/*.tsx",
+    "src/**/*.module.css",
+    "declaration.d.ts"
+, "src/models/postsInfoResponse", "src/models/postsInfoResponse"  ]
 }

@@ -1,0 +1,16 @@
+* {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box;
+}
+
+.verticalCenter {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+@font-face {
+    font-family: "Roboto";
+    src: url(../public/fonts/RobotoFlex.woff2);
+}

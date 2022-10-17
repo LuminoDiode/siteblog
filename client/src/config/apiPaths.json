@@ -1,0 +1,5 @@
+{
+    "apiBasePath":"/api", 
+    "authPath":"/auth",
+    "postsInfoPath":"postsInfo"
+}

@@ -1,0 +1,48 @@
+.postCard{
+    background-color: white;
+    font-family: "Roboto";
+    border-style: 1px solid whitesmoke;
+    box-shadow: 0px 0px 5px gray;
+    border-radius: 15px;
+    margin-left: calc(.1vh + 2vw);
+    margin-right: calc(.1vh + 2vw);
+    margin-top: calc(.1vh + 2vw);
+
+    display: block;
+    box-sizing: border-box;
+    width: 40%;
+    max-height: 100%;
+    max-width: 1000px;
+    min-width: 200px;
+}
+
+.postCardTextPart{
+    width: 100%;
+    display: block;
+    margin: 15px;
+}
+.postCardImage{
+    border-radius: 15px 15px 0px 0px;
+    width: 100%;
+    display: block;
+    min-height: 100px;
+    object-fit: scale-down;
+
+    background-color: blue;
+} 
+
+.postCardTitle{
+    font-weight: bold;
+    font-size: calc(2vh + 24px);
+}
+
+.postCardSubtitle{
+    font-weight: 100;
+    font-size: calc(2vh + 12px);
+}
+
+@media (orientation:portrait) {
+    .postCard{
+        width: 95%;
+    }
+}

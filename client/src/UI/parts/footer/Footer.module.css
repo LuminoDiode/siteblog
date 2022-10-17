@@ -1,0 +1,12 @@
+.appFooter {
+    position: relative;
+    display: flex;
+    min-height: 10vh;
+
+    border-top: 1px solid lightgray;
+    box-shadow: 0px 0px 10px lightgray;
+    
+    background-color: whitesmoke;
+
+    z-index: 2  ;
+}
