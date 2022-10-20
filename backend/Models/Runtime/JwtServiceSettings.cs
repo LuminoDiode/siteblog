@@ -1,8 +1,9 @@
 ﻿namespace backend.Models.Runtime
 {
-	public class JwtServiceSettings
+	/* Данный класс используется только для nameof. */
+	public abstract class JwtServiceSettings
 	{
-		public int tokenLifespanDays { get; set; }
-		public string? signingKey { get; set; }
+		public virtual int tokenLifespanDays { get; set; }
+		public virtual string signingKey { get; set; } = null!;
 	}
 }
