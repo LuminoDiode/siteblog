@@ -2,25 +2,21 @@
 using backend.Models.Runtime;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
 namespace backend.Services
 {
-	public sealed class JwtService
+	public class JwtService
 	{
-		private IConfiguration _configuration;
-		private JwtSecurityTokenHandler _tokenHandler;
-		private JwtServiceSettings? _settings => _configuration
-			.GetSection(nameof(JwtServiceSettings))?
-			.Get<JwtServiceSettings?>();
-		private byte[] _jwtKey => Encoding.ASCII.GetBytes(_settings?.signingKey ?? throw new SecurityTokenSignatureKeyNotFoundException("JWT key is not found by runtime."));
-		private int _jwtTokenLifetimeDays => _settings?.tokenLifespanDays ?? 60;
+		protected virtual JwtServiceSettingsProvider _settings { get; set; }
+		protected JwtSecurityTokenHandler _tokenHandler; 
 
-		public JwtService(IConfiguration configuration)
+		public JwtService(SettingsProviderService settings)
 		{
-			this._configuration = configuration;
+			this._settings = settings.JwtServiceSettings;
 			this._tokenHandler = new JwtSecurityTokenHandler();
 		}
 
@@ -32,14 +28,34 @@ namespace backend.Services
 				new Claim(nameof(user.UserRole),user.UserRole)
 			});
 
-		public string GenerateJwtToken(IList<Claim> claims)
+		public string GenerateJwtToken(IList<Claim> claims, DateTime? expires = null)
 		{
 			return _tokenHandler.WriteToken(_tokenHandler.CreateToken(new SecurityTokenDescriptor
 			{
 				Subject = new ClaimsIdentity(claims),
-				Expires = DateTime.UtcNow.AddDays(_jwtTokenLifetimeDays),
-				SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(_jwtKey), SecurityAlgorithms.HmacSha512Signature)
+				Expires = expires ?? DateTime.UtcNow.AddDays(_settings.tokenLifespanDays),
+				SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)), SecurityAlgorithms.HmacSha512Signature)
 			}));
+		}
+		public async Task<IDictionary<string, object>?> ValidateJwtToken(string token)
+		{
+			var result = await _tokenHandler.ValidateTokenAsync(token, new TokenValidationParameters
+			{
+				ValidateIssuer = false,
+				ValidateAudience = false,
+				ValidateLifetime = true,
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey))
+#if DEBUG
+				/* Данный твик устанавливает шаг проверки валидации времени смерти токена.
+				 * https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/dev/src/Microsoft.IdentityModel.Tokens/TokenValidationParameters.cs#L345
+				 * По умолчанию 5 минут, для тестов это слишком долго.
+				 */
+				,
+				ClockSkew = TimeSpan.Zero
+#endif
+		});
+			return result.IsValid ? result.Claims : null;
 		}
 	}
 }

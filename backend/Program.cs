@@ -84,6 +84,7 @@ namespace backend
 				builder.Services.AddDirectoryBrowser();
 			}
 
+			builder.Services.AddSingleton<SettingsProviderService>();
 			builder.Services.AddSingleton<FileUrnService>();
 			builder.Services.AddSingleton<JwtService>();
 			//builder.Services.AddSingleton<RecentService>();
