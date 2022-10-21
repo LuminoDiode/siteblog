@@ -14,7 +14,6 @@ namespace backend.Tests.Services
 	public class EmailConfirmationServiceTests
 	{
 		private readonly ITestOutputHelper _output;
-
 		private Mock<SettingsProviderService> _settingsProviderService;
 
 		public EmailConfirmationServiceTests(ITestOutputHelper output)
@@ -52,10 +51,8 @@ namespace backend.Tests.Services
 			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
 
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
-			_output.WriteLine($"generated link = \'{link}\'");
-			_output.WriteLine($"the jwt will be \'{link.Split('/').Last()}\'");
 			var withoutJwt = link.Substring(0, link.LastIndexOf('/'));
-			Assert.Equal(@"http://mysite.com/api/emailConfirmation", withoutJwt);
+			Assert.Equal(@"https://mysite.com/api/emailConfirmation", withoutJwt);
 		}
 
 		[Fact]
@@ -64,22 +61,20 @@ namespace backend.Tests.Services
 			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
 
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
-			var parsed = await service.GetInfoFromLink(link);
-			Assert.NotNull(parsed);
-			Assert.Equal(@"testemail@gmail.com", parsed!);
+			var parsed = service.GetInfoFromLink(link);
+			Assert.Equal(@"testemail@gmail.com", parsed);
 		}
 
 		[Fact]
 		public async void CannotValidateExpired()
 		{
-			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings.linkLifespanDays).Returns(2.225E-6); // 200 ms
-			_output.WriteLine((DateTime.UtcNow.AddDays(_settingsProviderService.Object.EmailConfirmationServiceSettings.linkLifespanDays) - DateTime.UtcNow)
-				.Milliseconds.ToString());
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
+			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings.linkLifespanDays).Returns(2.225E-6); // returns 200 ms, but Unix time step is 1s
 
+			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
-			await Task.Delay(3000);
-			Assert.Null(await service.GetInfoFromLink(link));
+			await Task.Delay(1000);
+
+			Assert.Throws<Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException>(()=>service.GetInfoFromLink(link));
 		}
 	}
 }

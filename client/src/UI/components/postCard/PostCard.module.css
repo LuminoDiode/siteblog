@@ -10,7 +10,7 @@
 
     display: block;
     box-sizing: border-box;
-    width: 40%;
+    width: 45%;
     max-height: 100%;
     max-width: 1000px;
     min-width: 200px;
@@ -41,8 +41,8 @@
     font-size: calc(2vh + 12px);
 }
 
-@media (orientation:portrait) {
+@media screen and (max-width:700px) {
     .postCard{
-        width: 95%;
+        width: 100%;
     }
 }

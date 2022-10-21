@@ -28,7 +28,7 @@ const PostsList:React.FC<postsInfoRequest> = (props) => {
         }
     },[props.postsType]);
     return (
-        <span style={{width:"90%",display:"flex",flexWrap:"wrap",justifyContent:"center"}}>
+        <span style={{width:"100%",display:"flex",flexWrap:"wrap",justifyContent:"center"}}>
             {currentPosts.map((x, index) =>
                     <PostCard key={index} {...x} />
             )}

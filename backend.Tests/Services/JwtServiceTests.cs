@@ -30,7 +30,7 @@ namespace backend.Tests.Services
 
 
 		[Fact]
-		public async void CanCreateAndValidate()
+		public void CanCreateAndValidate()
 		{
 			Mock<JwtServiceSettingsProvider> settingsProvider = new(null);
 			settingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_MEOVERRIDE_ME");
@@ -45,11 +45,11 @@ namespace backend.Tests.Services
 				new Claim("username","qwerty"),
 				new Claim("userrole","admin")
 			});
-			var decoded = await service.ValidateJwtToken(token);
+			var decoded = service.ValidateJwtToken(token);
 			Assert.NotNull(decoded);
 
-			Assert.Equal("qwerty", (string)(decoded!["username"]));
-			Assert.Equal("admin", (string)(decoded!["userrole"]));
+			Assert.Equal("qwerty", decoded.FindFirst("username").Value);
+			Assert.Equal("admin",decoded.FindFirst("userrole").Value);
 		}
 
 		[Fact]
@@ -63,8 +63,8 @@ namespace backend.Tests.Services
 
 			var service = new JwtService(settingService.Object);
 
-			var decoded = service.ValidateJwtToken("myrandomtoken.AndTheSignPart.AndJustSomethingElse").Result;
-			Assert.Null(decoded);
+			var token = "myrandomtoken.AndTheSignPart.AndJustSomethingElse";
+			Assert.Throws<System.ArgumentException>(()=> service.ValidateJwtToken(token));
 		}
 	}
 }
