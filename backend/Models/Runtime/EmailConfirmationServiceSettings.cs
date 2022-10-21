@@ -8,7 +8,5 @@
 		public virtual string delimiterString { get; set; } = null!;
 		public virtual int linkLifespanDays { get; set; }
 		public virtual string urlPathBeforeToken { get; set; } = null!;
-		public virtual SmtpServerInfo[] smtpServers { get; set; } = null!;
-		public virtual int clientsRenewIntervalMinutes { get; set; }
 	}
 }

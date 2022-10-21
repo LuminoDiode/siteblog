@@ -18,100 +18,21 @@ namespace backend.Services
 	 *	секретным ключем подписи.
 	 *  Сервис использует название домена из appsettings. 
 	 */
-	public class EmailConfirmationService : BackgroundService
-	{
-		public struct EmailConfirmationInfo
-		{
-			public string Email;
-			public DateTime ValidThrough;
-
-			public EmailConfirmationInfo(string Email, DateTime? ValidThrough = null)
-			{
-				this.Email = Email;
-				this.ValidThrough = ValidThrough ?? DateTime.MaxValue;
-			}
-		}
-
+	public sealed class EmailConfirmationService { 
 		private EmailConfirmationServiceSettingsProvider _settings { get; set; }
 		private JwtService _jwtService;
-		private List<(SmtpServerInfo server, SmtpClient client)> _smtpClients;
+		private SmtpClientsProviderService _smtpClientsService;
 
 		private const string emailClaimName = "EmailAddress";
 		private const string noReplyString = "no-reply";
 		private const string emailConfirmationSubject = "email-confirmation";
 		private const string emailConfirmationText = "Procceed the link to confirm your email: ";
 
-		public EmailConfirmationService(SettingsProviderService settings, JwtService jwtService)
+		public EmailConfirmationService(SettingsProviderService settings, JwtService jwtService, SmtpClientsProviderService smtpClientsService)
 		{
 			this._settings = settings.EmailConfirmationServiceSettings;
 			this._jwtService = jwtService;
-
-			_smtpClients = new();
-		}
-
-		public async Task TryCreateClientsAsync(IEnumerable<SmtpServerInfo>? smtpServerInfos = null)
-		{
-			foreach (var smtpServerInfo in smtpServerInfos ?? _settings.smtpServerInfos)
-			{
-				var newClient = new SmtpClient();
-
-				try // TLS first
-				{
-					await newClient.ConnectAsync(
-						smtpServerInfo.smtpServerUrl,
-						smtpServerInfo.smtpServerTlsPort,
-						options: MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable);
-				}
-				catch // SSL else
-				{
-					try
-					{
-						await newClient.ConnectAsync(
-							smtpServerInfo.smtpServerUrl,
-							smtpServerInfo.smtpServerSslPort,
-							options: MailKit.Security.SecureSocketOptions.SslOnConnect);
-					}
-					catch
-					{
-						continue;
-					}
-				}
-
-				try
-				{
-					await newClient.AuthenticateAsync(
-						smtpServerInfo.smtpServerUserName,
-						smtpServerInfo.smtpServerPassword
-					);
-				}
-				catch
-				{
-					continue;
-				}
-
-				_smtpClients.Add((smtpServerInfo, newClient));
-			}
-		}
-		public async Task RecreateDisconnectedClients()
-		{
-			List<SmtpServerInfo> serversToRecreate = new();
-
-			foreach (var clientInfoPair in _smtpClients)
-			{
-				await clientInfoPair.client.NoOpAsync();
-				if (clientInfoPair.client.IsConnected && clientInfoPair.client.IsAuthenticated)
-				{
-					continue;
-				}
-				else
-				{
-					serversToRecreate.Add(clientInfoPair.server);
-					await clientInfoPair.client.DisconnectAsync(true);
-					_smtpClients.Remove(clientInfoPair);
-				}
-			}
-
-			await TryCreateClientsAsync(serversToRecreate);
+			this._smtpClientsService = smtpClientsService;
 		}
 
 		public string CreateLinkForEmail(string Email)
@@ -145,27 +66,17 @@ namespace backend.Services
 				Text = emailConfirmationText + CreateLinkForEmail(UserEmail)
 			};
 
-			foreach (var clientServerPair in _smtpClients)
+			foreach (var client in _smtpClientsService.GetClients())
 			{
 				try
 				{
-					await clientServerPair.client.SendAsync(emailMessage);
+					await client.SendAsync(emailMessage);
 					continue;
 				}
 				catch
 				{
 
 				}
-			}
-		}
-
-		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-		{
-			await TryCreateClientsAsync();
-			while (!stoppingToken.IsCancellationRequested)
-			{
-				await Task.Delay(_settings.clientsRenewIntervalMinutes * 60 * 100);
-				await RecreateDisconnectedClients();
 			}
 		}
 	}

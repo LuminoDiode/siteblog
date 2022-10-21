@@ -13,12 +13,14 @@ namespace backend.Services
 		public virtual JwtServiceSettingsProvider JwtServiceSettings { get; protected set; }
 		public virtual FileUrnServiceSettingsProvider FileUrnServiceSettings { get; protected set; }
 		public virtual EmailConfirmationServiceSettingsProvider EmailConfirmationServiceSettings { get; protected set; }
+		public virtual SmtpClientsProviderServiceSettingsProvider SmtpClientsProviderServiceSettings { get; protected set; }
 		public SettingsProviderService(IConfiguration configuration)
 		{
 			_configuration = configuration;
 			this.JwtServiceSettings = new(_configuration);
 			this.FileUrnServiceSettings = new(_configuration);
 			this.EmailConfirmationServiceSettings = new(_configuration);
+			this.SmtpClientsProviderServiceSettings = new(_configuration);
 		}
 	}
 
@@ -61,9 +63,18 @@ namespace backend.Services
 			=> _configuration.GetValue<double>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.linkLifespanDays), 10000d);
 		public virtual string urlPathBeforeToken
 				=> _configuration.GetValue<string>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.urlPathBeforeToken), @"/api/emailConfirmation/");
+
+	}
+	public class SmtpClientsProviderServiceSettingsProvider
+	{
+		protected IConfiguration _configuration;
+		public SmtpClientsProviderServiceSettingsProvider(IConfiguration configuration)
+			=> _configuration = configuration;
+
 		public virtual SmtpServerInfo[] smtpServerInfos
-			=> _configuration.GetValue<SmtpServerInfo[]>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.smtpServers), new SmtpServerInfo[] { });
+			=> _configuration.GetValue<SmtpServerInfo[]>(nameof(SmtpClientsProviderServiceSettings) + ':' + nameof(SmtpClientsProviderServiceSettings.smtpServers), new SmtpServerInfo[] { });
 		public virtual int clientsRenewIntervalMinutes
-			=> _configuration.GetValue<int>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.clientsRenewIntervalMinutes), 1);
+			=> _configuration.GetValue<int>(nameof(SmtpClientsProviderServiceSettings) + ':' + nameof(SmtpClientsProviderServiceSettings.clientsRenewIntervalMinutes), 1);
+
 	}
 }
