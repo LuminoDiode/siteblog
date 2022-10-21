@@ -23,8 +23,8 @@ namespace backend.Services
 		public string GenerateJwtToken(User user)
 			=> GenerateJwtToken(new Claim[] { 
 				new Claim(nameof(user.Id), user.Id.ToString()), 
-				new Claim(nameof( user.Email), user.Email), 
-				new Claim(nameof( user.Name),user.Name ?? String.Empty),
+				new Claim(nameof(user.EmailAddress), user.EmailAddress), 
+				new Claim(nameof(user.Name),user.Name ?? String.Empty),
 				new Claim(nameof(user.UserRole),user.UserRole)
 			});
 
@@ -37,9 +37,9 @@ namespace backend.Services
 				SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)), SecurityAlgorithms.HmacSha512Signature)
 			}));
 		}
-		public async Task<IDictionary<string, object>?> ValidateJwtToken(string token)
+		public ClaimsPrincipal ValidateJwtToken(string token)
 		{
-			var result = await _tokenHandler.ValidateTokenAsync(token, new TokenValidationParameters
+			var result = _tokenHandler.ValidateToken(token, new TokenValidationParameters
 			{
 				ValidateIssuer = false,
 				ValidateAudience = false,
@@ -54,8 +54,8 @@ namespace backend.Services
 				,
 				ClockSkew = TimeSpan.Zero
 #endif
-		});
-			return result.IsValid ? result.Claims : null;
+		},out _);
+			return result;
 		}
 	}
 }

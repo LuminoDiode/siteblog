@@ -4,6 +4,10 @@ using System.Text;
 using Flurl;
 using System.Security.Cryptography;
 using System.Security.Claims;
+using MimeKit;
+using MailKit.Net.Smtp;
+using Duende.IdentityServer.Models;
+using static Duende.IdentityServer.Models.IdentityResources;
 
 namespace backend.Services
 {
@@ -14,7 +18,7 @@ namespace backend.Services
 	 *	секретным ключем подписи.
 	 *  Сервис использует название домена из appsettings. 
 	 */
-	public class EmailConfirmationService
+	public class EmailConfirmationService : BackgroundService
 	{
 		public struct EmailConfirmationInfo
 		{
@@ -29,14 +33,85 @@ namespace backend.Services
 		}
 
 		private EmailConfirmationServiceSettingsProvider _settings { get; set; }
-		private JwtService _jwtService { get; set; }
+		private JwtService _jwtService;
+		private List<(SmtpServerInfo server, SmtpClient client)> _smtpClients;
 
-		private const string emailClaimName = "useremail";
+		private const string emailClaimName = "EmailAddress";
+		private const string noReplyString = "no-reply";
+		private const string emailConfirmationSubject = "email-confirmation";
+		private const string emailConfirmationText = "Procceed the link to confirm your email: ";
 
 		public EmailConfirmationService(SettingsProviderService settings, JwtService jwtService)
 		{
 			this._settings = settings.EmailConfirmationServiceSettings;
 			this._jwtService = jwtService;
+
+			_smtpClients = new();
+		}
+
+		public async Task TryCreateClientsAsync(IEnumerable<SmtpServerInfo>? smtpServerInfos = null)
+		{
+			foreach (var smtpServerInfo in smtpServerInfos ?? _settings.smtpServerInfos)
+			{
+				var newClient = new SmtpClient();
+
+				try // TLS first
+				{
+					await newClient.ConnectAsync(
+						smtpServerInfo.smtpServerUrl,
+						smtpServerInfo.smtpServerTlsPort,
+						options: MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable);
+				}
+				catch // SSL else
+				{
+					try
+					{
+						await newClient.ConnectAsync(
+							smtpServerInfo.smtpServerUrl,
+							smtpServerInfo.smtpServerSslPort,
+							options: MailKit.Security.SecureSocketOptions.SslOnConnect);
+					}
+					catch
+					{
+						continue;
+					}
+				}
+
+				try
+				{
+					await newClient.AuthenticateAsync(
+						smtpServerInfo.smtpServerUserName,
+						smtpServerInfo.smtpServerPassword
+					);
+				}
+				catch
+				{
+					continue;
+				}
+
+				_smtpClients.Add((smtpServerInfo, newClient));
+			}
+		}
+		public async Task RecreateDisconnectedClients()
+		{
+			List<SmtpServerInfo> serversToRecreate = new();
+
+			foreach (var clientInfoPair in _smtpClients)
+			{
+				await clientInfoPair.client.NoOpAsync();
+				if (clientInfoPair.client.IsConnected && clientInfoPair.client.IsAuthenticated)
+				{
+					continue;
+				}
+				else
+				{
+					serversToRecreate.Add(clientInfoPair.server);
+					await clientInfoPair.client.DisconnectAsync(true);
+					_smtpClients.Remove(clientInfoPair);
+				}
+			}
+
+			await TryCreateClientsAsync(serversToRecreate);
 		}
 
 		public string CreateLinkForEmail(string Email)
@@ -47,24 +122,51 @@ namespace backend.Services
 			);
 
 			return Url.Combine(
-				$"http://{_settings.ownDomain}",
+				$"https://{_settings.ownDomain}",
 				_settings.urlPathBeforeToken,
 				generatedJwt
 			);
 		}
 
-		public async Task<string?> GetInfoFromLink(string Link)
+		public string? GetInfoFromLink(string Link)
 		{
-			var jwt = await _jwtService.ValidateJwtToken(Url.Parse(Link).PathSegments.Last());
+			return _jwtService.ValidateJwtToken(Link.Substring(Link.LastIndexOf('/') + 1)).FindFirstValue(emailClaimName);
+		}
 
-			if (jwt is not null)
+		public async Task SendConfirmationEmailAsync(string UserEmail)
+		{
+			var emailMessage = new MimeMessage();
+
+			emailMessage.From.Add(new MailboxAddress(String.Empty, noReplyString + '@' + _settings.ownDomain));
+			emailMessage.To.Add(new MailboxAddress(String.Empty, UserEmail));
+			emailMessage.Subject = emailConfirmationSubject;
+			emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html)
 			{
-				if (jwt.TryGetValue(emailClaimName, out var email))
+				Text = emailConfirmationText + CreateLinkForEmail(UserEmail)
+			};
+
+			foreach (var clientServerPair in _smtpClients)
+			{
+				try
 				{
-					return (string)email;
+					await clientServerPair.client.SendAsync(emailMessage);
+					continue;
+				}
+				catch
+				{
+
 				}
 			}
-			return null;
+		}
+
+		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+		{
+			await TryCreateClientsAsync();
+			while (!stoppingToken.IsCancellationRequested)
+			{
+				await Task.Delay(_settings.clientsRenewIntervalMinutes * 60 * 100);
+				await RecreateDisconnectedClients();
+			}
 		}
 	}
 }

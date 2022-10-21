@@ -17,7 +17,7 @@ namespace backend.Repository
 		{
 			base.OnModelCreating(modelBuilder);
 
-			modelBuilder.Entity<User>().HasAlternateKey(u => u.Email);
+			modelBuilder.Entity<User>().HasAlternateKey(u => u.EmailAddress);
 
 			modelBuilder.Entity<Post>()
 				.HasGeneratedTsVectorColumn(p => p.TitleVector, "simple", p => p.Title + ' ' + p.Subtile)

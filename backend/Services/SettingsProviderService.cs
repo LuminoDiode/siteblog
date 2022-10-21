@@ -61,5 +61,9 @@ namespace backend.Services
 			=> _configuration.GetValue<double>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.linkLifespanDays), 10000d);
 		public virtual string urlPathBeforeToken
 				=> _configuration.GetValue<string>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.urlPathBeforeToken), @"/api/emailConfirmation/");
+		public virtual SmtpServerInfo[] smtpServerInfos
+			=> _configuration.GetValue<SmtpServerInfo[]>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.smtpServers), new SmtpServerInfo[] { });
+		public virtual int clientsRenewIntervalMinutes
+			=> _configuration.GetValue<int>(nameof(EmailConfirmationServiceSettings) + ':' + nameof(EmailConfirmationServiceSettings.clientsRenewIntervalMinutes), 1);
 	}
 }
