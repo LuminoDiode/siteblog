@@ -7,8 +7,8 @@
         public string? Name { get; set; }
         public string EmailAddress { get; set; } = null!;
         public bool EmailConfirmed { get; set; } = false;
-        public string? PasswordHash { get; set; } = null!;
-        public string? PasswordSalt { get; set; } = null!;
+        public byte[] PasswordHash { get; set; } = null!;
+        public byte[] PasswordSalt { get; set; } = null!;
 
         public string UserRole { get; set; } = "user"; // user,admin,moderator
     }

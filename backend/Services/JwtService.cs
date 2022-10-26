@@ -34,21 +34,25 @@ namespace backend.Services
 			{
 				Subject = new ClaimsIdentity(claims),
 				Expires = expires ?? DateTime.UtcNow.AddDays(_settings.tokenLifespanDays),
-				SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)), SecurityAlgorithms.HmacSha512Signature)
+				Issuer = _settings.issuer,
+				SigningCredentials = new SigningCredentials(
+					new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)), 
+					SecurityAlgorithms.HmacSha512Signature)
 			}));
 		}
 		public ClaimsPrincipal ValidateJwtToken(string token)
 		{
 			var result = _tokenHandler.ValidateToken(token, new TokenValidationParameters
 			{
-				ValidateIssuer = false,
+				ValidateIssuer = true,
+				ValidIssuer = _settings.issuer,
 				ValidateAudience = false,
 				ValidateLifetime = true,
 				ValidateIssuerSigningKey = true,
 				IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey))
 #if DEBUG
 				/* Данный твик устанавливает шаг проверки валидации времени смерти токена.
-				 * https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/dev/src/Microsoft.IdentityModel.Tokens/TokenValidationParameters.cs#L345
+				 * https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/blob/dev/src/Microsoft.IdentityModel.Tokens/TokenValidationParameters.cs#L339
 				 * По умолчанию 5 минут, для тестов это слишком долго.
 				 */
 				,

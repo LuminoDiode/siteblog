@@ -14,13 +14,17 @@ namespace backend.Services
 		public virtual FileUrnServiceSettingsProvider FileUrnServiceSettings { get; protected set; }
 		public virtual EmailConfirmationServiceSettingsProvider EmailConfirmationServiceSettings { get; protected set; }
 		public virtual SmtpClientsProviderServiceSettingsProvider SmtpClientsProviderServiceSettings { get; protected set; }
+		public virtual PasswordsCryptographyServiceSettingsProvider PasswordsCryptographyServiceSettings { get; protected set; }
+		public virtual ResetPasswordServiceSettingsProvider ResetPasswordServiceSettings { get; protected set; }
 		public SettingsProviderService(IConfiguration configuration)
 		{
-			_configuration = configuration;
+			this._configuration = configuration;
 			this.JwtServiceSettings = new(_configuration);
 			this.FileUrnServiceSettings = new(_configuration);
 			this.EmailConfirmationServiceSettings = new(_configuration);
 			this.SmtpClientsProviderServiceSettings = new(_configuration);
+			this.PasswordsCryptographyServiceSettings = new(_configuration);
+			this.ResetPasswordServiceSettings = new(_configuration);
 		}
 	}
 
@@ -35,6 +39,8 @@ namespace backend.Services
 			=> _configuration.GetValue<int>(nameof(JwtServiceSettings) + ':' + nameof(JwtServiceSettings.tokenLifespanDays), 360);
 		public virtual string signingKey
 			=> _configuration.GetValue<string>(nameof(JwtServiceSettings) + ':' + nameof(JwtServiceSettings.signingKey), @"OVERRIDE_ME");
+		public virtual string issuer
+			=> _configuration.GetValue<string>(nameof(JwtServiceSettings) + ':' + nameof(JwtServiceSettings.issuer), @"OVERRIDE_ME");
 	}
 
 	public class FileUrnServiceSettingsProvider
@@ -67,7 +73,7 @@ namespace backend.Services
 	}
 	public class SmtpClientsProviderServiceSettingsProvider
 	{
-		protected IConfiguration _configuration;
+		protected readonly IConfiguration _configuration;
 		public SmtpClientsProviderServiceSettingsProvider(IConfiguration configuration)
 			=> _configuration = configuration;
 
@@ -75,6 +81,29 @@ namespace backend.Services
 			=> _configuration.GetValue<SmtpServerInfo[]>(nameof(SmtpClientsProviderServiceSettings) + ':' + nameof(SmtpClientsProviderServiceSettings.smtpServers), new SmtpServerInfo[] { });
 		public virtual int clientsRenewIntervalMinutes
 			=> _configuration.GetValue<int>(nameof(SmtpClientsProviderServiceSettings) + ':' + nameof(SmtpClientsProviderServiceSettings.clientsRenewIntervalMinutes), 1);
+	}
+
+	public class PasswordsCryptographyServiceSettingsProvider
+	{
+		protected readonly IConfiguration _configuration;
+		public PasswordsCryptographyServiceSettingsProvider(IConfiguration configuration)
+			=> _configuration = configuration;
+
+		public virtual int saltSizeBytes
+			=> _configuration.GetValue<int>(nameof(PasswordsCryptographyServiceSettings) + ':' + nameof(PasswordsCryptographyServiceSettings.saltSizeBytes), 1);
+	}
+	public class ResetPasswordServiceSettingsProvider
+	{
+		protected readonly IConfiguration _configuration;
+		public ResetPasswordServiceSettingsProvider(IConfiguration configuration)
+			=> _configuration = configuration;
+
+		public virtual string ownDomain
+			=> _configuration.GetValue<string>(nameof(ResetPasswordServiceSettings) + ':' + nameof(ResetPasswordServiceSettings.ownDomain), @"bruhcontent.ru");
+		public virtual double linkLifespanDays
+			=> _configuration.GetValue<double>(nameof(ResetPasswordServiceSettings) + ':' + nameof(ResetPasswordServiceSettings.linkLifespanDays), 1d);
+		public virtual string urlPathBeforeToken
+				=> _configuration.GetValue<string>(nameof(ResetPasswordServiceSettings) + ':' + nameof(ResetPasswordServiceSettings.urlPathBeforeToken), @"/resetPassword/");
 
 	}
 }

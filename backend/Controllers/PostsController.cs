@@ -37,18 +37,24 @@ namespace backend.Controllers
 
 		[HttpPut]
 		[Authorize(Roles ="admin")]
-		public IActionResult Posts([FromForm][Required] IFormFile topImage, [FromForm][Required] AddPostRequest metadata)
+		public IActionResult PutPost([FromForm][Required] IFormFile topImage, [FromForm][Required] AddPostRequest metadata)
 		{
 			throw new NotImplementedException();
 		}
 
 		[HttpPatch]
 		[Authorize(Roles = "admin")]
-		public IActionResult Posts([FromForm][Required] IFormFile topImage, [FromForm][Required] EditPostRequest metadata)
+		public IActionResult PatchPost([FromForm][Required] IFormFile topImage, [FromForm][Required] EditPostRequest metadata)
 		{
 			throw new NotImplementedException();
 		}
 
+		[HttpDelete]
+		[Authorize(Roles ="admin")]
+		public IActionResult DeletePost([FromBody][Required] int Id)
+		{
+			throw new NotImplementedException();
+		}
 
 	}
 }
