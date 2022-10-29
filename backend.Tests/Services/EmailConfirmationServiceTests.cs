@@ -1,12 +1,5 @@
 ﻿using backend.Services;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace backend.Tests.Services
@@ -40,7 +33,7 @@ namespace backend.Tests.Services
 		[Fact]
 		public void CanCreateInstance()
 		{
-			var service = new EmailConfirmationService(_settingsProviderService.Object,new JwtService(_settingsProviderService.Object));
+			var service = new EmailConfirmationService(_settingsProviderService.Object,new JwtService(_settingsProviderService.Object),null, null);
 
 			Assert.NotNull(service);
 		}
@@ -48,7 +41,7 @@ namespace backend.Tests.Services
 		[Fact]
 		public void CanCreateLink()
 		{
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
+			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
 
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
 			var withoutJwt = link.Substring(0, link.LastIndexOf('/'));
@@ -58,10 +51,11 @@ namespace backend.Tests.Services
 		[Fact]
 		public async void CanValidateLink()
 		{
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
+			_settingsProviderService.SetupGet(x => x.JwtServiceSettings.issuer).Returns("OVERRIDE_ME");
+			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
 
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
-			var parsed = service.GetInfoFromLink(link);
+			var parsed = service.GetEmailFromLinkIfValid(link);
 			Assert.Equal(@"testemail@gmail.com", parsed);
 		}
 
@@ -70,11 +64,12 @@ namespace backend.Tests.Services
 		{
 			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings.linkLifespanDays).Returns(2.225E-6); // returns 200 ms, but Unix time step is 1s
 
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
+
+			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
 			await Task.Delay(1000);
 
-			Assert.Throws<Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException>(()=>service.GetInfoFromLink(link));
+			Assert.Throws<Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException>(()=>service.GetEmailFromLinkIfValid(link));
 		}
 	}
 }

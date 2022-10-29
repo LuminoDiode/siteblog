@@ -33,6 +33,7 @@ namespace backend.Tests.Services
 		public void CanCreateAndValidate()
 		{
 			Mock<JwtServiceSettingsProvider> settingsProvider = new(null);
+			settingsProvider.SetupGet(x => x.issuer).Returns("OVERRIDE_ME");
 			settingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_MEOVERRIDE_ME");
 			settingsProvider.SetupGet(x => x.tokenLifespanDays).Returns(360);
 			Mock<SettingsProviderService> settingService = new(null);

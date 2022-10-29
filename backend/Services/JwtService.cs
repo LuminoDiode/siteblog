@@ -22,10 +22,10 @@ namespace backend.Services
 
 		public string GenerateJwtToken(User user)
 			=> GenerateJwtToken(new Claim[] { 
-				new Claim(nameof(user.Id), user.Id.ToString()), 
-				new Claim(nameof(user.EmailAddress), user.EmailAddress), 
-				new Claim(nameof(user.Name),user.Name ?? String.Empty),
-				new Claim(nameof(user.UserRole),user.UserRole)
+				new Claim(nameof(User.Id), user.Id.ToString()), 
+				new Claim(nameof(User.EmailAddress), user.EmailAddress), 
+				new Claim(nameof(User.Name),user.Name ?? String.Empty),
+				new Claim(nameof(User.UserRole),user.UserRole)
 			});
 
 		public string GenerateJwtToken(IList<Claim> claims, DateTime? expires = null)

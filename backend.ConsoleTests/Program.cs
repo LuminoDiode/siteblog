@@ -28,10 +28,10 @@ namespace backend.ConsoleTests
 			_settingsProviderService.SetupGet(x => x.JwtServiceSettings).Returns(jwtSettingsProvider.Object);
 			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings).Returns(emailConfirmSettingsProvider.Object);
 
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object));
+			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object),null,null);
 
 			var link = service.CreateLinkForEmail("testemail@gmail.com");
-			var parsed =  service.GetInfoFromLink(link);
+			var parsed =  service.GetEmailFromLinkIfValid(link);
 			//Console.ReadKey();
 
 			var _tokenHandler = new JwtSecurityTokenHandler();

@@ -84,11 +84,13 @@ namespace backend
 				builder.Services.AddDirectoryBrowser();
 			}
 
+			builder.Services.AddScoped<UserService>();
+
 			builder.Services.AddSingleton<SettingsProviderService>();
 			builder.Services.AddSingleton<FileUrnService>();
 			builder.Services.AddSingleton<JwtService>();
-
 			builder.Services.AddSingleton<EmailConfirmationService>();
+
 			builder.Services.AddSingleton<SmtpClientsProviderService>();
 			builder.Services.AddHostedService(pr => pr.GetRequiredService<SmtpClientsProviderService>());
 

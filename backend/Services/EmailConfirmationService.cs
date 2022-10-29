@@ -33,10 +33,10 @@ namespace backend.Services
 		protected const string emailConfirmationText = "Procceed the link to confirm your email: ";
 
 		public EmailConfirmationService(
-			SettingsProviderService settings, 
-			JwtService jwtService, 
+			SettingsProviderService settings,
+			JwtService jwtService,
 			SmtpClientsProviderService smtpClientsService,
-			ILogger<EmailConfirmationService>logger)
+			ILogger<EmailConfirmationService> logger)
 		{
 			this._settings = settings.EmailConfirmationServiceSettings;
 			this._jwtService = jwtService;
