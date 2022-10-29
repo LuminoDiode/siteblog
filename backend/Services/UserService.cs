@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.DependencyInjection;
 using Org.BouncyCastle.Asn1.Ocsp;
+using static Duende.IdentityServer.Models.IdentityResources;
 
 namespace backend.Services
 {
@@ -150,34 +151,58 @@ namespace backend.Services
 			await _emailConfirmationService.SendConfirmationEmailAsync(email);
 		}
 
+
+
 		/// <summary>
-		/// Finds if the user exists, and if it is - deleting.
+		/// Marks selected user for the deletion and saves this changes to the DB.
+		/// This call must be <see langword="await"/>ed.
 		/// </summary>
-		/// <param name="Id">The deleted user Id.</param>
-		/// <returns>true if user with such Id was marked for deletion, false otherwise.</returns>
-		public async Task<bool> TryDeleteUserAsync(int Id)
+		/// <param name="userId">Deleted user id.</param>
+		/// <returns>An operation task.</returns>
+		public async Task DeleteUserAsync(int userId)
 		{
-			var found = await _blogContext.Users.FindAsync(Id);
-			if (found is null) return false;
-			_blogContext.Users.Remove(found);
+			await DeleteUserAsync(await TryFindAsync(userId));
+		}
+
+		/// <summary>
+		/// Marks selected user for the deletion and saves this changes to the DB.
+		/// This call must be <see langword="await"/>ed.
+		/// </summary>
+		/// <param name="userEmail">Deleted user email.</param>
+		/// <returns>An operation task.</returns>
+		public async Task DeleteUserAsync(string userEmail)
+		{
+			await DeleteUserAsync(await TryFindAsync(userEmail));
+		}
+
+		/// <summary>
+		/// Marks selected user for the deletion and saves this changes to the DB.
+		/// This call must be <see langword="await"/>ed.
+		/// </summary>
+		/// <param name="user">Deleted user.</param>
+		/// <returns>An operation task.</returns>
+		protected async Task DeleteUserAsync(User? user)
+		{
+			if (user is null) throw new ArgumentNullException("User was null. Check if such user exists in the DB.");
+
+			_blogContext.Users.Remove(user);
 			await _blogContext.SaveChangesAsync();
-
-			return true;
 		}
+
 
 		/// <summary>
-		/// Finds if the user exists, and if it is - deleting.
+		/// Creates LoginResponse model for selected user, including<br/>
+		/// <see cref="User.Id"/>,
+		/// <see cref="User.Name"/>,
+		/// <see cref="User.UserRole"/>,
+		/// <see cref="User.EmailConfirmed"/>,<br/>
+		/// Authorize bearer from  <see cref="JwtService"/>,<br/>
+		/// Notifications array passed as the params.
+		/// <see cref="User.Id"/>
 		/// </summary>
-		/// <param name="Id">The deleted user Id.</param>
-		/// <returns>true if user with such Id was marked for deletion, false otherwise.</returns>
-		public async Task<bool> TryDeleteUserAsync(string email)
-		{
-			var found = await TryFindAsync(email);
-			if (found is null) return false;
-			_blogContext.Users.Remove(found);
-			return true;
-		}
-
+		/// <param name="usr">Selected user.</param>
+		/// <param name="humanNotifications">Selected notifications.</param>
+		/// <returns>An operation task.</returns>
 		public LoginResponse CreateLoginResponse(User usr, params string[] humanNotifications)
 		{
 			return new LoginResponse
@@ -191,15 +216,39 @@ namespace backend.Services
 			};
 		}
 
+
+		/// <summary>
+		/// Sets new password to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="userId">Selected user id.</param>
+		/// <param name="newPassword">New username to set.</param>
+		/// <returns>An operation task</returns>
 		public async Task SetNewPasswordAsync(int userId, string newPassword)
 		{
 			await SetNewPasswordAsync(await TryFindAsync(userId), newPassword);
 		}
+
+		/// <summary>
+		/// Sets new password to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="userEmail">Selected user email.</param>
+		/// <param name="newPassword">New username to set.</param>
+		/// <returns>An operation task.</returns>
 		public async Task SetNewPasswordAsync(string userEmail, string newPassword)
 		{
 			await SetNewPasswordAsync(await TryFindAsync(userEmail), newPassword);
 		}
-		public async Task SetNewPasswordAsync(User? user, string newPassword)
+
+		/// <summary>
+		/// Sets new password to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="user">Selected user.</param>
+		/// <param name="newPassword">New username to set.</param>
+		/// <returns>An operation task.</returns>
+		protected async Task SetNewPasswordAsync(User? user, string newPassword)
 		{
 			if (user is null) throw new ArgumentException("User was null. Check if such user exists in the DB.");
 
@@ -212,15 +261,38 @@ namespace backend.Services
 		}
 
 
-		public async Task SetNewUsernameForUser(int userId, string newName)
+		/// <summary>
+		/// Sets new username to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="userId">Selected user id.</param>
+		/// <param name="newUsername">New username to set.</param>
+		/// <returns>An operation task.</returns>
+		public async Task SetNewUsernameForUser(int userId, string newUsername)
 		{
-			await SetNewUsernameForUser(await TryFindAsync(userId), newName);
+			await SetNewUsernameForUser(await TryFindAsync(userId), newUsername);
 		}
-		public async Task SetNewUsernameForUser(string userEmail, string newName)
+
+		/// <summary>
+		/// Sets new username to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="userEmail">Selected user email.</param>
+		/// <param name="newUsername">New username to set.</param>
+		/// <returns>An operation task.</returns>
+		public async Task SetNewUsernameForUser(string userEmail, string newUsername)
 		{
-			await SetNewUsernameForUser(await TryFindAsync(userEmail), newName);
+			await SetNewUsernameForUser(await TryFindAsync(userEmail), newUsername);
 		}
-		public async Task SetNewUsernameForUser(User? user, string newUsername)
+
+		/// <summary>
+		/// Sets new username to the selected user and saves changes to DB.
+		/// This call must be <see langword="await" />ed.
+		/// </summary>
+		/// <param name="user">Selected user.</param>
+		/// <param name="newUsername">New username to set.</param>
+		/// <returns>An operation task.</returns>
+		protected async Task SetNewUsernameForUser(User? user, string newUsername)
 		{
 			if (user is null) throw new ArgumentNullException("User was null. Check if such user exists in the DB.");
 

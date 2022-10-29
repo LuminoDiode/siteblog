@@ -135,7 +135,7 @@ namespace backend.Services
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
-			_logger.LogInformation($"Starting the {nameof(SmtpClientsProviderService)} in background.");
+			_logger.LogInformation($"Starting {nameof(SmtpClientsProviderService)} in the background.");
 
 			await TryCreateClientsAsync();
 			while (!stoppingToken.IsCancellationRequested)

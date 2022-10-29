@@ -188,7 +188,7 @@ namespace backend.Controllers
 			}
 
 			// deleting
-			var resultOk = await _userService.TryDeleteUserAsync(id);
+			var resultOk = await _userService.DeleteUserAsync(id);
 
 			if (resultOk)
 				return Ok();
