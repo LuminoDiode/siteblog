@@ -1,7 +1,7 @@
 ﻿namespace backend.Models.Runtime
 {
-	public abstract class PasswordsCryptographyServiceSettings
+	public class PasswordsCryptographyServiceSettings
 	{
-		public virtual int saltSizeBytes { get; set; }
+		public virtual int saltSizeBytes { get; set; } = 128;
 	}
 }

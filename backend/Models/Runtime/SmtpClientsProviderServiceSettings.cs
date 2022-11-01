@@ -1,8 +1,8 @@
 ﻿namespace backend.Models.Runtime
 {
-	public abstract class SmtpClientsProviderServiceSettings
+	public class SmtpClientsProviderServiceSettings
 	{
-		public virtual SmtpServerInfo[] smtpServers { get; set; } = null!;
-		public virtual double clientsRenewIntervalMinutes { get; set; }
+		public virtual SmtpServerInfo[] smtpServers { get; set; } = Array.Empty<SmtpServerInfo>();
+		public virtual double clientsRenewIntervalMinutes { get; set; } = 10;
 	}
 }

@@ -1,4 +1,5 @@
-﻿using Flurl;
+﻿using backend.Models.Runtime;
+using Flurl;
 using MimeKit;
 using System.Security.Claims;
 
@@ -6,7 +7,8 @@ namespace backend.Services
 {
 	public class ResetPasswordEmailService
 	{
-		protected ResetPasswordServiceSettingsProvider _settings;
+		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		protected ResetPasswordServiceSettings _settings => _settingsProvider.ResetPasswordServiceSettings;
 		protected JwtService _jwtService;
 		protected SmtpClientsProviderService _smtpClientsService;
 		protected ILogger _logger;
@@ -19,12 +21,12 @@ namespace backend.Services
 		protected const string emailConfirmationText = "Procceed the link to confirm your email: ";
 
 		public ResetPasswordEmailService(
-			SettingsProviderService settings,
+			SettingsProviderService settingsProvider,
 			JwtService jwtService,
 			SmtpClientsProviderService smtpClientsService,
 			ILogger<ResetPasswordEmailService> logger)
 		{
-			this._settings = settings.ResetPasswordServiceSettings;
+			this._settingsProvider = settingsProvider;
 			this._jwtService = jwtService;
 			this._smtpClientsService = smtpClientsService;
 			this._logger = logger;

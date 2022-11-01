@@ -1,10 +1,10 @@
 ﻿namespace backend.Models.Runtime
 {
 	/* Данный класс используется только для nameof. */
-	public abstract class EmailConfirmationServiceSettings
+	public class EmailConfirmationServiceSettings
 	{
-		public virtual string ownDomain { get; set; } = null!;
-		public virtual int linkLifespanDays { get; set; }
-		public virtual string urlPathBeforeToken { get; set; } = null!;
+		public virtual string ownDomain { get; set; } = @"https://bruhcontent.ru";
+		public virtual int linkLifespanDays { get; set; } = 365;
+		public virtual string urlPathBeforeToken { get; set; } = @"/emailConfirmation/";
 	}
 }

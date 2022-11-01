@@ -18,14 +18,14 @@ namespace backend.Services
 {
 	public class SmtpClientsProviderService : BackgroundService
 	{
-
-		protected SmtpClientsProviderServiceSettingsProvider _settings { get; set; }
+		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		protected SmtpClientsProviderServiceSettings _settings => _settingsProvider.SmtpClientsProviderServiceSettings;
 		protected List<(SmtpServerInfo server, SmtpClient client)> _smtpClients;
 		protected ILogger _logger;
 
-		public SmtpClientsProviderService(SettingsProviderService settings, ILogger<SmtpClientsProviderService>logger)
+		public SmtpClientsProviderService(SettingsProviderService settingsProvider, ILogger<SmtpClientsProviderService>logger)
 		{
-			this._settings = settings.SmtpClientsProviderServiceSettings;
+			this._settingsProvider = settingsProvider;
 			this._logger = logger;
 			_smtpClients = new();
 
@@ -39,7 +39,7 @@ namespace backend.Services
 
 		protected async Task TryCreateClientsAsync(IEnumerable<SmtpServerInfo>? smtpServerInfos = null)
 		{
-			foreach (var smtpServerInfo in smtpServerInfos ?? _settings.smtpServerInfos)
+			foreach (var smtpServerInfo in smtpServerInfos ?? _settings.smtpServers)
 			{
 				string protocol;
 				var newClient = new SmtpClient();
@@ -141,7 +141,7 @@ namespace backend.Services
 
 			while (!stoppingToken.IsCancellationRequested)
 			{
-				await Task.Delay(_settings.clientsRenewIntervalMinutes * 60 * 1000);
+				await Task.Delay((int)(_settings.clientsRenewIntervalMinutes * 60 * 1000));
 				await RecreateDisconnectedClients();
 			}
 		}

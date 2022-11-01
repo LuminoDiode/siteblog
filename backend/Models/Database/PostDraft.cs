@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace backend.Models.Database
 {
-	public class PostDraft
+	public class PostDraft:IObjectWithId
 	{
 		[Key]
 		public int Id { get; set; }

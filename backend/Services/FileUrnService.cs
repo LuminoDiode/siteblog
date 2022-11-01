@@ -5,14 +5,15 @@ namespace backend.Services
 {
 	public class FileUrnService
 	{
-		private IConfiguration _configuration;
+		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		protected virtual FileUrnServiceSettings _settings => _settingsProvider.FileUrnServiceSettings;
 
-		private string _staticFilesUrnPath => this._configuration.GetSection(nameof(StorageSettings))?.Get<StorageSettings?>()?.staticFilesUrnPath ?? "staticfiles";
-		private string _imageUrnDirectoryPath => this._configuration.GetSection(nameof(StorageSettings))?.Get<StorageSettings?>()?.imagesDirectoryPath ?? "user_added/images";
-		private string _imageFileExtension => this._configuration.GetSection(nameof(StorageSettings))?.Get<StorageSettings?>()?.imageFileExtension ?? "jpeg";
-		public FileUrnService(IConfiguration configuration)
+		private string _staticFilesUrnPath => _settings.staticFilesUrnPath;
+		private string _imageUrnDirectoryPath => _settings.imagesDirectoryPath;
+		private string _imageFileExtension => _settings.imageFileExtension;
+		public FileUrnService(SettingsProviderService settingsProvider)
 		{
-			_configuration = configuration;
+			_settingsProvider = settingsProvider;
 		}
 
 		public string UrnToGetImage(Image img) => '/' + Path.Join(_staticFilesUrnPath, _imageUrnDirectoryPath, img.Id.ToString() + '.' + _imageFileExtension);

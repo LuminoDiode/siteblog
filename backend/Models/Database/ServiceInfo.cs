@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models.Database
 {
-	public class Service  
+	public class Service : IObjectWithId
 	{
 		[Key]
 		public int Id { get; set; }

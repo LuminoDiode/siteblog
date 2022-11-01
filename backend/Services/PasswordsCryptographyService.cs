@@ -12,14 +12,15 @@ namespace backend.Services
 	// https://github.com/LuminoDiode/LuminoDiodeWebsite/blob/master/Website/Services/PasswordsService.cs
 	public class PasswordsCryptographyService
 	{
-		protected readonly PasswordsCryptographyServiceSettingsProvider _settings;
+		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		protected virtual PasswordsCryptographyServiceSettings _settings => _settingsProvider.PasswordsCryptographyServiceSettings;
 		protected readonly Func<byte[], byte[]> HashData = SHA512.HashData;
 		protected readonly Func<string, byte[]> GetBytes = Encoding.UTF8.GetBytes;
 		protected int SaltSizeBytes => this._settings.saltSizeBytes;
 
-		public PasswordsCryptographyService(SettingsProviderService SettingsProvider)
+		public PasswordsCryptographyService(SettingsProviderService settingsProvider)
 		{
-			this._settings = SettingsProvider.PasswordsCryptographyServiceSettings;
+			this._settingsProvider = settingsProvider;
 		}
 
 		public byte[] HashPassword(string PlainTextPassword, out byte[] GeneratedSalt)

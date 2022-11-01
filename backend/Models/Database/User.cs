@@ -2,8 +2,8 @@
 
 namespace backend.Models.Database
 {
-    public class User  
-    {
+    public class User : IObjectWithId
+	{
         public const string UserRoleUserConst = "user";
         public const string UserRoleModeratorConst = "moderator";
 		public const string UserRoleAdminConst = "admin";

@@ -11,12 +11,14 @@ namespace backend.Services
 {
 	public class JwtService
 	{
-		protected virtual JwtServiceSettingsProvider _settings { get; set; }
-		protected JwtSecurityTokenHandler _tokenHandler; 
+		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		protected virtual JwtServiceSettings _settings => _settingsProvider.JwtServiceSettings;
+
+		protected readonly JwtSecurityTokenHandler _tokenHandler; 
 
 		public JwtService(SettingsProviderService settings)
 		{
-			this._settings = settings.JwtServiceSettings;
+			this._settingsProvider = settings;
 			this._tokenHandler = new JwtSecurityTokenHandler();
 		}
 
