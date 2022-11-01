@@ -71,7 +71,7 @@ namespace backend.ConsoleTests
 			//	Task.Delay(1000).Wait();
 			//}
 
-			DraftService<PostDraft,BlogContext> t = new(new BlogContext(), null, x => x.PostDrafts, x => true, x => DateTime.UtcNow);
+			DraftService<PostDraft,BlogContext> t = new(null,new BlogContext(), x => x.PostDrafts, x => true, x => DateTime.UtcNow,null);
 			Console.ReadKey();
 		}
 	}
