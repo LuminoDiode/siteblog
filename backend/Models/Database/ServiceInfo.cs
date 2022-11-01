@@ -1,11 +1,12 @@
-﻿using Npgsql.Internal.TypeHandlers.FullTextSearchHandlers;
+﻿using backend.Models.API.Common;
+using Npgsql.Internal.TypeHandlers.FullTextSearchHandlers;
 using NpgsqlTypes;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models.Database
 {
-	public class Service
+	public class Service  
 	{
 		[Key]
 		public int Id { get; set; }

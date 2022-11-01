@@ -16,6 +16,8 @@ namespace backend.Services
 		public virtual SmtpClientsProviderServiceSettingsProvider SmtpClientsProviderServiceSettings { get; protected set; }
 		public virtual PasswordsCryptographyServiceSettingsProvider PasswordsCryptographyServiceSettings { get; protected set; }
 		public virtual ResetPasswordServiceSettingsProvider ResetPasswordServiceSettings { get; protected set; }
+		public virtual DraftServiceSettingsProvider DraftServiceSettings { get; protected set; }
+
 		public SettingsProviderService(IConfiguration configuration)
 		{
 			this._configuration = configuration;
@@ -25,6 +27,7 @@ namespace backend.Services
 			this.SmtpClientsProviderServiceSettings = new(_configuration);
 			this.PasswordsCryptographyServiceSettings = new(_configuration);
 			this.ResetPasswordServiceSettings = new(_configuration);
+			this.DraftServiceSettings=new(_configuration);
 		}
 	}
 
@@ -104,6 +107,24 @@ namespace backend.Services
 			=> _configuration.GetValue<double>(nameof(ResetPasswordServiceSettings) + ':' + nameof(ResetPasswordServiceSettings.linkLifespanDays), 1d);
 		public virtual string urlPathBeforeToken
 				=> _configuration.GetValue<string>(nameof(ResetPasswordServiceSettings) + ':' + nameof(ResetPasswordServiceSettings.urlPathBeforeToken), @"/resetPassword/");
+	}
+	public class DraftServiceSettingsProvider
+	{
+		protected readonly IConfiguration _configuration;
+		public DraftServiceSettingsProvider(IConfiguration configuration)
+			=> _configuration = configuration;
+
+
+		public virtual int maxEntitiesStoredInRam
+			=> _configuration.GetValue<int>(nameof(DraftServiceSettings) + ':' + nameof(DraftServiceSettings.maxEntitiesStoredInRam), 100);
+		public virtual double maxTimeEntityStoredInRamMinutes
+			=> _configuration.GetValue<double>(nameof(DraftServiceSettings) + ':' + nameof(DraftServiceSettings.maxTimeEntityStoredInRamMinutes), 10);
+		public virtual int maxEntitiesStoredInDb
+				=> _configuration.GetValue<int>(nameof(DraftServiceSettings) + ':' + nameof(DraftServiceSettings.maxEntitiesStoredInDb),1000);
+		public virtual double maxTimeEntityStoredInDbMinutes
+			=> _configuration.GetValue<double>(nameof(DraftServiceSettings) + ':' + nameof(DraftServiceSettings.maxTimeEntityStoredInDbMinutes), 43200);
+		public virtual double updateStoredEntitiesIntervalMinutes
+			=>  _configuration.GetValue<double>(nameof(DraftServiceSettings) + ':' + nameof(DraftServiceSettings.updateStoredEntitiesIntervalMinutes), 10);
 
 	}
 }

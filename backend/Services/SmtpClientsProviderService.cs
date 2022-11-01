@@ -138,6 +138,7 @@ namespace backend.Services
 			_logger.LogInformation($"Starting {nameof(SmtpClientsProviderService)} in the background.");
 
 			await TryCreateClientsAsync();
+
 			while (!stoppingToken.IsCancellationRequested)
 			{
 				await Task.Delay(_settings.clientsRenewIntervalMinutes * 60 * 1000);

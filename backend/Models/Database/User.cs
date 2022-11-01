@@ -1,6 +1,8 @@
-﻿namespace backend.Models.Database
+﻿using backend.Models.API.Common;
+
+namespace backend.Models.Database
 {
-    public class User
+    public class User  
     {
         public const string UserRoleUserConst = "user";
         public const string UserRoleModeratorConst = "moderator";

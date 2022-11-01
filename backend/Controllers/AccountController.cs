@@ -15,6 +15,7 @@ using backend.Models.Database;
 using backend.Models.API.User;
 using System.Security.Claims;
 using Duende.IdentityServer.Extensions;
+using backend.Services.Repositories;
 
 namespace backend.Controllers
 {
@@ -28,13 +29,13 @@ namespace backend.Controllers
 		protected readonly ILogger _logger;
 		protected readonly JwtService _jwtService;
 		protected readonly PasswordsCryptographyService _passwordsCryptographyService;
-		protected readonly UserService _userService;
-		protected readonly UserService.PasswordConstraints _passwordConstraints;
-		protected readonly UserService.UsernameConstraints _usernameConstraints;
+		protected readonly UserRepository _userService;
+		protected readonly UserRepository.PasswordConstraints _passwordConstraints;
+		protected readonly UserRepository.UsernameConstraints _usernameConstraints;
 
 
 		public AccountController(
-			UserService userService,
+			UserRepository userService,
 			JwtService jwtService,
 			PasswordsCryptographyService passwordsCryptographyService,
 			IConfiguration config,
@@ -46,8 +47,8 @@ namespace backend.Controllers
 			_passwordsCryptographyService = passwordsCryptographyService;
 			_userService = userService;
 
-			_passwordConstraints = new UserService.PasswordConstraints();
-			_usernameConstraints = new UserService.UsernameConstraints();
+			_passwordConstraints = new UserRepository.PasswordConstraints();
+			_usernameConstraints = new UserRepository.UsernameConstraints();
 		}
 
 
@@ -150,7 +151,7 @@ namespace backend.Controllers
 					return BadRequest(new HumanResponse("Password does not match the requirements."));
 				}
 
-				await _userService.SetNewPasswordForUser(patchRequest.Id.Value, patchRequest.NewPassword);
+				await _userService.SetNewPasswordAsync(patchRequest.Id.Value, patchRequest.NewPassword);
 			}
 
 			if(!string.IsNullOrEmpty(patchRequest.NewName))
@@ -188,12 +189,9 @@ namespace backend.Controllers
 			}
 
 			// deleting
-			var resultOk = await _userService.DeleteUserAsync(id);
+			await _userService.DeleteUserAsync(found);
 
-			if (resultOk)
-				return Ok();
-			else
-				return Problem();
+			return Ok();
 		}
 	}
 }

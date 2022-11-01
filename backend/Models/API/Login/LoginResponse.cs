@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace backend.Models.API.Login
 {
-	public class LoginResponse: HumanResponse
+	public class LoginResponse: HumanResponse 
 	{
 		public string BearerToken { get; set; } = null!;
 		public int Id { get; set; }

@@ -11,10 +11,11 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using backend.Repository;
 using backend.Services;
+using backend.Services.Repositories;
 
 namespace backend
 {
-	class Program
+    class Program
 	{
 		public static void Main(string[] args)
 		{
@@ -84,7 +85,7 @@ namespace backend
 				builder.Services.AddDirectoryBrowser();
 			}
 
-			builder.Services.AddScoped<UserService>();
+			builder.Services.AddScoped<UserRepository>();
 
 			builder.Services.AddSingleton<SettingsProviderService>();
 			builder.Services.AddSingleton<FileUrnService>();

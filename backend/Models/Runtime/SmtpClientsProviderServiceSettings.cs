@@ -3,6 +3,6 @@
 	public abstract class SmtpClientsProviderServiceSettings
 	{
 		public virtual SmtpServerInfo[] smtpServers { get; set; } = null!;
-		public virtual int clientsRenewIntervalMinutes { get; set; }
+		public virtual double clientsRenewIntervalMinutes { get; set; }
 	}
 }
