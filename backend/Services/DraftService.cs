@@ -8,8 +8,8 @@ using System.Threading;
 
 namespace backend.Services
 {
-
-	public /* abstract */ class DraftService<TEntity, TContext>
+	
+	public abstract class DraftService<TEntity, TContext>
 		: BackgroundService, IDisposable, IAsyncDisposable
 		where TEntity : class
 		where TContext : DbContext
@@ -29,7 +29,7 @@ namespace backend.Services
 		protected readonly TContext? _dbContext;
 		protected readonly SettingsProviderService _settingsProvider;
 		protected virtual DraftServiceSettings _settings => _settingsProvider.DraftServiceSettings;
-		protected readonly List<StoredDraft> RamStored;
+		protected readonly List<StoredDraft> _ramStored;
 		protected readonly Func<TContext, DbSet<TEntity>>? _dbSetSelector;
 		protected readonly Func<TEntity, bool>? _entityInDbPredicate;
 		protected readonly Func<TEntity, DateTime>? _entityLastUpdateSelector;
@@ -43,7 +43,9 @@ namespace backend.Services
 			$"{nameof(_dbContext)}, {nameof(_dbSetSelector)} or {nameof(_entityInDbPredicate)} is null.";
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DraftService"/> class.
+		/// Initializes a new instance of the <see cref="DraftService"/> class.<br/>
+		/// The primary purpose of this class is to save user-draft, <br/>
+		/// like drafts of the articles e.t.c
 		/// </summary>
 		/// <param name="dbContext">
 		/// Nullable db context to be used for saving to db. 
@@ -51,19 +53,29 @@ namespace backend.Services
 		/// </param>
 		/// <param name="settingsProvider">
 		/// SettingsProvider for the service.
+		/// In case of inheritance, override _settings property to chage used provided settings.
 		/// </param>
 		/// <param name="dbSetSelector">
-		/// Delegate for getting target dbSet from the TContext.
+		/// Delegate for getting target dbSet from the TContext.<br/>
+		/// Not used if <paramref name="dbContext"/> is null.
 		/// </param>
 		/// <param name="entityInDbPredicate">
-		/// Delegate for getting the entity from db. Prefer using Id selection.
-		/// When trying to save draft entities to the db, service will try to use this
-		/// predicate in the SignleOrDefault method.
+		/// Delegate for getting the entity from db. Prefer using Id selection.<br/>
+		/// When trying to save draft entities to the db, service will try to use this<br/>
+		/// predicate in the SignleOrDefault method to detect already existing draft in db and update it.<br/>
 		/// This delegate must be translateable for Queryable in case of
-		/// using TContext (if it is not null).
+		/// using TContext (if it is not null).<br/>
+		/// Not used if <paramref name="dbContext"/> is null.
 		/// </param>
 		/// <param name="entityLastUpdateFieldSelector">
-		/// Delegate for getting last update time from the stored entities.
+		/// Delegate for getting last update time from the stored entities.<br/>
+		/// Not used if <paramref name="dbContext"/> is null.
+		/// In case of null when <paramref name="dbContext"/> is not null, <br/>
+		/// all the entities in db will be counted as not outdated.
+		/// </param>
+		/// <param name="entityLastUpdateFieldSetter">
+		/// Delegate for setting last update time from the stored entities.<br/>
+		/// Not used if <paramref name="dbContext"/> is null.
 		/// </param>
 		public DraftService(
 			SettingsProviderService settingsProvider,
@@ -80,7 +92,7 @@ namespace backend.Services
 			_entityLastUpdateSelector = entityLastUpdateFieldSelector;
 			_entityLastUpdateFieldSetter = entityLastUpdateFieldSetter;
 
-			RamStored = new(_settings.maxEntitiesStoredInRam);
+			_ramStored = new(_settings.maxEntitiesStoredInRam);
 
 			if (dbContext is not null)
 			{
@@ -101,41 +113,37 @@ namespace backend.Services
 				< DateTime.UtcNow);
 		}
 
-		protected void onDbMethodEntery()
-		{
-			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
-				throw new ArgumentNullException($"Cannot use any of the db methods when any of " +
-					$"{nameof(this._dbContext)}, {nameof(this._dbSetSelector)} or {nameof(_entityInDbPredicate)} is null.");
-		}
-
 		public void PushDraft(TEntity entity)
 		{
-			this.RamStored.Add(new(DateTime.UtcNow, entity));
+			this._ramStored.Add(new(DateTime.UtcNow, entity));
 		}
 
-		public TEntity? GetDraftFromRam(Func<TEntity, bool> predicate)
+		protected TEntity? GetDraftFromRam(Func<TEntity, bool> predicate)
 		{
-			var found = RamStored.FirstOrDefault(x => predicate(x.Entity));
+			var found = _ramStored.FirstOrDefault(x => predicate(x.Entity));
 			return found is null ? default(TEntity) : found.Entity;
 		}
 
-		public Task<TEntity?> GetDraftFromDbAsync(Func<TEntity, bool> predicate)
+		protected async Task<TEntity?> GetDraftFromDbAsync(Func<TEntity, bool> predicate)
 		{
 			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
 				throw new ArgumentNullException(cannotUseDbMethodsWhileContextIsNullExceptionMessage);
 
-			if (_dbContext is null) return Task.FromResult(default(TEntity));
-			// _dbSetSelector is not null if the _dbContext is not null.
-			return _dbSetSelector(_dbContext).FirstOrDefaultAsync(x => predicate(x)); // 
+			return await _dbSetSelector(_dbContext).FirstOrDefaultAsync(x => predicate(x)); // 
 		}
 
+		public async Task<TEntity?> GetDraftAsync(Func<TEntity, bool> predicate)
+		{
+			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
+				return GetDraftFromRam(predicate);
+			else
+				return GetDraftFromRam(predicate) ?? await GetDraftFromDbAsync(predicate);
+		}
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
 			while (!stoppingToken.IsCancellationRequested)
 			{
-				await Task.Delay((int)(_settings.updateStoredEntitiesIntervalMinutes * 60 * 100));
-
 				if (_dbContext is null)
 				{
 					DeleteOutdatedFromRam();
@@ -145,12 +153,14 @@ namespace backend.Services
 					await DeleteOutdatedFromDbAsync();
 					await SaveOutdatedFromRamToDbAsync();
 				}
+
+				await Task.Delay((int)(_settings.updateStoredEntitiesIntervalMinutes * 60 * 100));
 			}
 		}
 
 		protected void DeleteOutdatedFromRam()
 		{
-			RamStored.RemoveAll(x => _inRamOutdatedPredicate(x)); // null deref should never happen here
+			_ramStored.RemoveAll(x => _inRamOutdatedPredicate(x));
 		}
 
 		protected async Task SaveOutdatedFromRamToDbAsync()
@@ -159,7 +169,7 @@ namespace backend.Services
 				throw new ArgumentNullException(cannotUseDbMethodsWhileContextIsNullExceptionMessage);
 
 			// discovering all the entities to save
-			var toBeSaved = this.RamStored.Where(x => _inRamOutdatedPredicate(x));
+			var toBeSaved = this._ramStored.Where(x => _inRamOutdatedPredicate(x));
 
 			// saving all the discovered to db
 			foreach (var ramStored in toBeSaved)
@@ -176,7 +186,7 @@ namespace backend.Services
 					_dbContext.Entry(foundInDb).CurrentValues.SetValues(ramStored.Entity);
 				}
 
-				this.RamStored.Remove(ramStored);
+				this._ramStored.Remove(ramStored);
 			}
 
 			// save to the db
