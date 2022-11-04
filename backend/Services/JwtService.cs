@@ -11,34 +11,44 @@ namespace backend.Services
 {
 	public class JwtService
 	{
-		protected virtual SettingsProviderService _settingsProvider { get; init; }
+		// making this field virtual prop doesnt give anything coz _settings still needs exactly this type
+		protected readonly SettingsProviderService _settingsProvider;
 		protected virtual JwtServiceSettings _settings => _settingsProvider.JwtServiceSettings;
 
-		protected readonly JwtSecurityTokenHandler _tokenHandler; 
+		private readonly JwtSecurityTokenHandler _tokenHandler;
 
-		public JwtService(SettingsProviderService settings)
+		public JwtService(SettingsProviderService settingsProvider)
 		{
-			this._settingsProvider = settings;
+			this._settingsProvider = settingsProvider;
 			this._tokenHandler = new JwtSecurityTokenHandler();
 		}
 
 		public string GenerateJwtToken(User user)
-			=> GenerateJwtToken(new Claim[] { 
-				new Claim(nameof(User.Id), user.Id.ToString()), 
-				new Claim(nameof(User.EmailAddress), user.EmailAddress), 
+			=> GenerateJwtToken(new Claim[] {
+				new Claim(nameof(User.Id), user.Id.ToString()),
+				new Claim(nameof(User.EmailAddress), user.EmailAddress),
 				new Claim(nameof(User.Name),user.Name ?? String.Empty),
 				new Claim(nameof(User.UserRole),user.UserRole)
 			});
 
 		public string GenerateJwtToken(IList<Claim> claims, DateTime? expires = null)
 		{
+#if DEBUG
+			var Subject = new ClaimsIdentity(claims);
+			var Expires = expires ?? DateTime.UtcNow.AddDays(_settings.tokenLifespanDays);
+			var Issuer = _settings.issuer;
+			var SigningCredentials = new SigningCredentials(
+				new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)),
+				SecurityAlgorithms.HmacSha512Signature);
+#endif
+
 			return _tokenHandler.WriteToken(_tokenHandler.CreateToken(new SecurityTokenDescriptor
 			{
 				Subject = new ClaimsIdentity(claims),
 				Expires = expires ?? DateTime.UtcNow.AddDays(_settings.tokenLifespanDays),
 				Issuer = _settings.issuer,
 				SigningCredentials = new SigningCredentials(
-					new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)), 
+					new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_settings.signingKey)),
 					SecurityAlgorithms.HmacSha512Signature)
 			}));
 		}
@@ -60,7 +70,7 @@ namespace backend.Services
 				,
 				ClockSkew = TimeSpan.Zero
 #endif
-		},out _);
+			}, out _);
 			return result;
 		}
 	}

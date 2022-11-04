@@ -4,22 +4,15 @@ namespace backend.Services.Repositories
 {
 	public class PostRepository
 	{
-		protected readonly PasswordsCryptographyService _passwordsCryptographyService;
-		//protected readonly JwtService _jwtService;
-		protected readonly EmailConfirmationService _emailConfirmationService;
+		protected readonly PostDraftService _postDraftService;
 		protected readonly BlogContext _blogContext;
 
 		public PostRepository(
 			BlogContext blogContext,
-			PasswordsCryptographyService passwordsCryptographyService,
-			EmailConfirmationService emailService)
+			PostDraftService postDraftService)
 		{
-			_passwordsCryptographyService = passwordsCryptographyService;
-			//_jwtService = jwtService;
-			_emailConfirmationService = emailService;
 			_blogContext = blogContext;
-
-			throw new NotImplementedException();
+			_postDraftService = postDraftService;
 		}
 	}
 }

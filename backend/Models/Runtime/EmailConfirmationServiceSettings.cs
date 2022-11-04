@@ -4,7 +4,7 @@
 	public class EmailConfirmationServiceSettings
 	{
 		public virtual string ownDomain { get; set; } = @"https://bruhcontent.ru";
-		public virtual int linkLifespanDays { get; set; } = 365;
+		public virtual double linkLifespanDays { get; set; } = 365;
 		public virtual string urlPathBeforeToken { get; set; } = @"/emailConfirmation/";
 	}
 }

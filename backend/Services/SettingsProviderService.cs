@@ -25,6 +25,8 @@ namespace backend.Services
 			=> _configuration.GetSection(nameof(ResetPasswordServiceSettings)).Get<ResetPasswordServiceSettings>();
 		public virtual DraftServiceSettings DraftServiceSettings
 			=> _configuration.GetSection(nameof(DraftServiceSettings)).Get<DraftServiceSettings>();
+		public virtual PostDraftServiceSettings PostDraftServiceSettings
+			=> _configuration.GetSection(nameof(PostDraftServiceSettings)).Get<PostDraftServiceSettings>();
 
 		public SettingsProviderService(IConfiguration configuration)
 		{

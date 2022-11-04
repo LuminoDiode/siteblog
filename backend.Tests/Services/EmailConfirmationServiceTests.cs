@@ -1,75 +1,84 @@
-﻿using backend.Services;
+﻿using backend.Models.Runtime;
+using backend.Services;
+using Castle.Core.Logging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
 using Xunit.Abstractions;
 
 namespace backend.Tests.Services
 {
 	public class EmailConfirmationServiceTests
 	{
-		private readonly ITestOutputHelper _output;
-		private Mock<SettingsProviderService> _settingsProviderService;
+		ITestOutputHelper _output;
+		ILogger<EmailConfirmationService> _logger;
+
+		public Mock<SettingsProviderService> defaultSettingsProviderMock;
+		public EmailConfirmationService defaultEmailConfirmationService;
+		public EmailConfirmationServiceSettings defaultSettings;
+		public const string userEmailAddressConst = "userEmailAddressConst@gmail.com";
 
 		public EmailConfirmationServiceTests(ITestOutputHelper output)
 		{
-			this._output = output;
+			_output = output;
+			_logger = output.BuildLoggerFor<EmailConfirmationService>();
 
-			Mock<JwtServiceSettingsProvider> jwtSettingsProvider = new(null);
-			jwtSettingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_MEOVERRIDE_ME");
-			jwtSettingsProvider.SetupGet(x => x.tokenLifespanDays).Returns(360);
+			defaultSettings = new EmailConfirmationServiceSettings
+			{
+				linkLifespanDays = 365,
+				ownDomain = "https://mysite.com/",
+				urlPathBeforeToken = "confirmEmail"
+			};
 
+			defaultSettingsProviderMock = new(null);
+			defaultSettingsProviderMock.SetupGet(x => x.EmailConfirmationServiceSettings).Returns(defaultSettings);
 
-			Mock<EmailConfirmationServiceSettingsProvider> emailConfirmSettingsProvider = new(null);
-			emailConfirmSettingsProvider.SetupGet(x => x.ownDomain).Returns(@"mysite.com/");
-			emailConfirmSettingsProvider.SetupGet(x => x.linkLifespanDays).Returns(1);
-			emailConfirmSettingsProvider.SetupGet(x => x.urlPathBeforeToken).Returns(@"/api/emailConfirmation/");
-
-			_settingsProviderService = new(null);
-
-
-			_settingsProviderService.SetupGet(x => x.JwtServiceSettings).Returns(jwtSettingsProvider.Object);
-			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings).Returns(emailConfirmSettingsProvider.Object);
+			defaultEmailConfirmationService = new(defaultSettingsProviderMock.Object, new JwtServiceTests().defaultJwtService, null, _logger);
 		}
 
 		[Fact]
 		public void CanCreateInstance()
 		{
-			var service = new EmailConfirmationService(_settingsProviderService.Object,new JwtService(_settingsProviderService.Object),null, null);
-
-			Assert.NotNull(service);
+			Assert.NotNull(defaultEmailConfirmationService);
 		}
 
 		[Fact]
 		public void CanCreateLink()
 		{
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
+			var service = defaultEmailConfirmationService;
 
-			var link = service.CreateLinkForEmail("testemail@gmail.com");
+			var link = service.CreateLinkForEmail(userEmailAddressConst);
 			var withoutJwt = link.Substring(0, link.LastIndexOf('/'));
-			Assert.Equal(@"https://mysite.com/api/emailConfirmation", withoutJwt);
+			Assert.Equal(defaultSettings.ownDomain + defaultSettings.urlPathBeforeToken, withoutJwt);
 		}
 
 		[Fact]
-		public async void CanValidateLink()
+		public void CanValidateLink()
 		{
-			_settingsProviderService.SetupGet(x => x.JwtServiceSettings.issuer).Returns("OVERRIDE_ME");
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
+			var service = defaultEmailConfirmationService;
 
-			var link = service.CreateLinkForEmail("testemail@gmail.com");
+			var link = service.CreateLinkForEmail(userEmailAddressConst);
 			var parsed = service.GetEmailFromLinkIfValid(link);
-			Assert.Equal(@"testemail@gmail.com", parsed);
+			Assert.Equal(userEmailAddressConst, parsed);
 		}
 
 		[Fact]
 		public async void CannotValidateExpired()
 		{
-			_settingsProviderService.SetupGet(x => x.EmailConfirmationServiceSettings.linkLifespanDays).Returns(2.225E-6); // returns 200 ms, but Unix time step is 1s
+			var mySettings = new EmailConfirmationServiceSettings
+			{
+				linkLifespanDays = 2.225E-6, // 200 ms, but Unix time step is 1s
+				ownDomain = "https://mysite.com/",
+				urlPathBeforeToken = userEmailAddressConst
+			};
+			defaultSettingsProviderMock.SetupGet(x => x.EmailConfirmationServiceSettings).Returns(mySettings);
 
+			var service = new EmailConfirmationService(defaultSettingsProviderMock.Object,new JwtServiceTests().defaultJwtService,null,_logger);
 
-			var service = new EmailConfirmationService(_settingsProviderService.Object, new JwtService(_settingsProviderService.Object), null, null);
-			var link = service.CreateLinkForEmail("testemail@gmail.com");
+			var link = service.CreateLinkForEmail(userEmailAddressConst);
 			await Task.Delay(1000);
-
-			Assert.Throws<Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException>(()=>service.GetEmailFromLinkIfValid(link));
+			Assert.Throws<Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException>(() => service.GetEmailFromLinkIfValid(link));
 		}
 	}
 }

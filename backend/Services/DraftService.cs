@@ -8,11 +8,12 @@ using System.Threading;
 
 namespace backend.Services
 {
-	
-	public abstract class DraftService<TEntity, TContext>
+
+	public class DraftService<TEntity, TContext, TKey>
 		: BackgroundService, IDisposable, IAsyncDisposable
 		where TEntity : class
 		where TContext : DbContext
+		where TKey : IEquatable<TKey>
 	{
 		protected class StoredDraft
 		{
@@ -31,16 +32,18 @@ namespace backend.Services
 		protected virtual DraftServiceSettings _settings => _settingsProvider.DraftServiceSettings;
 		protected readonly List<StoredDraft> _ramStored;
 		protected readonly Func<TContext, DbSet<TEntity>>? _dbSetSelector;
-		protected readonly Func<TEntity, bool>? _entityInDbPredicate;
+		protected readonly Func<TEntity, TKey>? _entityKeyFieldSelector;
 		protected readonly Func<TEntity, DateTime>? _entityLastUpdateSelector;
 		protected readonly Action<TEntity, DateTime>? _entityLastUpdateFieldSetter;
 
 		protected Func<StoredDraft, bool> _inRamOutdatedPredicate;
 		protected Func<TEntity, bool>? _inDbOutdatedPredicate;
 
-		protected const string cannotUseDbMethodsWhileContextIsNullExceptionMessage = 
+		protected readonly ILogger? _logger;
+
+		protected const string cannotUseDbMethodsWhileContextIsNullExceptionMessage =
 			$"Cannot use any of the db methods when any of " +
-			$"{nameof(_dbContext)}, {nameof(_dbSetSelector)} or {nameof(_entityInDbPredicate)} is null.";
+			$"{nameof(_dbContext)}, {nameof(_dbSetSelector)} or {nameof(_entityKeyFieldSelector)} is null.";
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="DraftService"/> class.<br/>
@@ -59,7 +62,7 @@ namespace backend.Services
 		/// Delegate for getting target dbSet from the TContext.<br/>
 		/// Not used if <paramref name="dbContext"/> is null.
 		/// </param>
-		/// <param name="entityInDbPredicate">
+		/// <param name="entityKeyFieldSelector">
 		/// Delegate for getting the entity from db. Prefer using Id selection.<br/>
 		/// When trying to save draft entities to the db, service will try to use this<br/>
 		/// predicate in the SignleOrDefault method to detect already existing draft in db and update it.<br/>
@@ -79,27 +82,29 @@ namespace backend.Services
 		/// </param>
 		public DraftService(
 			SettingsProviderService settingsProvider,
-			TContext? dbContext=null,
+			TContext? dbContext = null,
 			Func<TContext, DbSet<TEntity>>? dbSetSelector = null,
-			Func<TEntity, bool>? entityInDbPredicate = null,
+			Func<TEntity, TKey>? entityKeyFieldSelector = null,
 			Func<TEntity, DateTime>? entityLastUpdateFieldSelector = null,
-			Action<TEntity, DateTime>? entityLastUpdateFieldSetter = null)
+			Action<TEntity, DateTime>? entityLastUpdateFieldSetter = null,
+			ILogger<DraftService<TEntity, TContext, TKey>>? logger = null)
 		{
 			_dbContext = dbContext;
 			_settingsProvider = settingsProvider;
 			_dbSetSelector = dbSetSelector;
-			_entityInDbPredicate = entityInDbPredicate;
+			_entityKeyFieldSelector = entityKeyFieldSelector;
 			_entityLastUpdateSelector = entityLastUpdateFieldSelector;
 			_entityLastUpdateFieldSetter = entityLastUpdateFieldSetter;
+			_logger = logger;
 
-			_ramStored = new(_settings.maxEntitiesStoredInRam);
+			_ramStored = new();
 
 			if (dbContext is not null)
 			{
-				if (dbSetSelector is null || entityInDbPredicate is null)
+				if (dbSetSelector is null || entityKeyFieldSelector is null)
 				{
 					throw new ArgumentNullException($"If the {nameof(dbContext)} parameter is not null, " +
-						$"both {nameof(dbSetSelector)} and {nameof(entityInDbPredicate)} parameters " +
+						$"both {nameof(dbSetSelector)} and {nameof(entityKeyFieldSelector)} parameters " +
 						$"must be not null, dbContext usage cannot be determinated otherwise.");
 				}
 			}
@@ -111,22 +116,25 @@ namespace backend.Services
 			_inDbOutdatedPredicate = entityLastUpdateFieldSelector is null ? null : (x =>
 				entityLastUpdateFieldSelector(x).AddMinutes(_settings.maxTimeEntityStoredInDbMinutes)
 				< DateTime.UtcNow);
+
+			_logger?.LogInformation($"The instance of {nameof(DraftService<TEntity, TContext, TKey>)} created.");
 		}
 
 		public void PushDraft(TEntity entity)
 		{
 			this._ramStored.Add(new(DateTime.UtcNow, entity));
+			_logger?.LogInformation($"New draft was added. Currently storing {this._ramStored.Count} entities ram.");
 		}
 
 		protected TEntity? GetDraftFromRam(Func<TEntity, bool> predicate)
 		{
 			var found = _ramStored.FirstOrDefault(x => predicate(x.Entity));
-			return found is null ? default(TEntity) : found.Entity;
+			return found?.Entity ?? default(TEntity);
 		}
 
 		protected async Task<TEntity?> GetDraftFromDbAsync(Func<TEntity, bool> predicate)
 		{
-			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
+			if (this._dbContext is null || this._dbSetSelector is null || this._entityKeyFieldSelector is null)
 				throw new ArgumentNullException(cannotUseDbMethodsWhileContextIsNullExceptionMessage);
 
 			return await _dbSetSelector(_dbContext).FirstOrDefaultAsync(x => predicate(x)); // 
@@ -134,7 +142,7 @@ namespace backend.Services
 
 		public async Task<TEntity?> GetDraftAsync(Func<TEntity, bool> predicate)
 		{
-			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
+			if (this._dbContext is null || this._dbSetSelector is null || this._entityKeyFieldSelector is null)
 				return GetDraftFromRam(predicate);
 			else
 				return GetDraftFromRam(predicate) ?? await GetDraftFromDbAsync(predicate);
@@ -142,8 +150,19 @@ namespace backend.Services
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
+			_logger?.LogInformation($"Starting {nameof(DraftService<TEntity,TContext,TKey>)} in the background.");
+
 			while (!stoppingToken.IsCancellationRequested)
 			{
+				// If list once became very large 
+				if (_ramStored.Capacity > _ramStored.Count * 3 && _ramStored.Capacity > short.MaxValue)
+				{
+					_logger?.LogInformation($"Drafts list is {(_ramStored.Capacity / ((double)_ramStored.Count)).ToString("F")} times larger than actual stored quantity" +
+						$", so its capacity will be decreased.");
+
+					_ramStored.Capacity = (int)(_ramStored.Count * 1.5d);
+				}
+
 				if (_dbContext is null)
 				{
 					DeleteOutdatedFromRam();
@@ -154,35 +173,49 @@ namespace backend.Services
 					await SaveOutdatedFromRamToDbAsync();
 				}
 
-				await Task.Delay((int)(_settings.updateStoredEntitiesIntervalMinutes * 60 * 100));
+				await Task.Delay((int)(_settings.updateStoredEntitiesIntervalMinutes * 60 * 1000));
 			}
+
+			_logger?.LogInformation($"Exited from ExecuteAsync.");
 		}
 
+		/// <summary>
+		/// Deletes outdated entities.
+		/// </summary>
+		/// <returns>THe number of elements deleted from the ram.</returns>
 		protected void DeleteOutdatedFromRam()
 		{
-			_ramStored.RemoveAll(x => _inRamOutdatedPredicate(x));
+			_logger?.LogInformation($"Removing outdated entites from the list... Stored before the clean: {_ramStored.Count}.");
+			var deletedQuantity = _ramStored.RemoveAll(x => _inRamOutdatedPredicate(x));
+			_logger?.LogInformation($"Removed {deletedQuantity} outdated entites from the list. Currently storing {this._ramStored.Count} entities in ram.");
 		}
 
 		protected async Task SaveOutdatedFromRamToDbAsync()
 		{
-			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
+			if (this._dbContext is null || this._dbSetSelector is null || this._entityKeyFieldSelector is null)
 				throw new ArgumentNullException(cannotUseDbMethodsWhileContextIsNullExceptionMessage);
 
 			// discovering all the entities to save
-			var toBeSaved = this._ramStored.Where(x => _inRamOutdatedPredicate(x));
+			var toBeSaved = this._ramStored.Where(x => _inRamOutdatedPredicate(x)).ToList();
+
+			_logger?.LogInformation($"Moving {toBeSaved.Count} of {_ramStored.Count} entities from ram to db.");
+
+			if (toBeSaved.Count == 0) return;
 
 			// saving all the discovered to db
 			foreach (var ramStored in toBeSaved)
 			{
-				var foundInDb = _dbSetSelector(_dbContext).AsTracking().SingleOrDefaultAsync(x => _entityInDbPredicate(x));
+				var foundInDb = _dbSetSelector(_dbContext).AsTracking()
+					.SingleOrDefaultAsync(x => _entityKeyFieldSelector(x)
+						.Equals(_entityKeyFieldSelector(ramStored.Entity)));
 
 				// if such id not found - add new row
 				if (foundInDb is null) await _dbSetSelector(_dbContext).AddAsync(ramStored.Entity);
 				// if it is - update in the db
 				else
 				{
-					if (_entityLastUpdateFieldSetter is not null)
-						_entityLastUpdateFieldSetter(ramStored.Entity, ramStored.LastUpdatedDateTimeUtc);
+
+					_entityLastUpdateFieldSetter?.Invoke(ramStored.Entity, ramStored.LastUpdatedDateTimeUtc);
 					_dbContext.Entry(foundInDb).CurrentValues.SetValues(ramStored.Entity);
 				}
 
@@ -201,19 +234,25 @@ namespace backend.Services
 
 		protected async Task DeleteOutdatedFromDbAsync()
 		{
-			if (this._dbContext is null || this._dbSetSelector is null || this._entityInDbPredicate is null)
+			if (this._dbContext is null || this._dbSetSelector is null || this._entityKeyFieldSelector is null)
 				throw new ArgumentNullException(cannotUseDbMethodsWhileContextIsNullExceptionMessage);
+
+			_logger?.LogInformation($"Removing outdated entites from the db... Stored before the clean: {await _dbSetSelector(_dbContext).CountAsync()}.");
 
 			var toDelete = _dbSetSelector(_dbContext).Where(x => (_inDbOutdatedPredicate == null) ? false : _inDbOutdatedPredicate(x));
 
 			_dbSetSelector(_dbContext).RemoveRange(toDelete);
 
 			await _dbContext.SaveChangesAsync();
+
+			_logger?.LogInformation($"Removed outdated entites from the db...Currently storing {await _dbSetSelector(_dbContext).CountAsync()} entities in the db.");
 		}
 
 		// saving all the entities to db
 		public override void Dispose()
 		{
+			_logger?.LogInformation($"Disposing...");
+
 			if (_dbContext is not null)
 			{
 				_inRamOutdatedPredicate = x => true;
@@ -224,6 +263,8 @@ namespace backend.Services
 		}
 		public async ValueTask DisposeAsync()
 		{
+			_logger?.LogInformation($"Disposing...");
+
 			if (_dbContext is not null)
 			{
 				_inRamOutdatedPredicate = x => true;

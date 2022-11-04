@@ -3,6 +3,7 @@ using backend.Models.API.Post;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using backend.Services;
 
 namespace backend.Controllers
 {
@@ -12,6 +13,12 @@ namespace backend.Controllers
 	[Produces("application/json")]
 	public class PostsController
 	{
+		public PostsController()
+		{
+
+		}
+
+
 		[HttpGet]
 		[AllowAnonymous]
 		public IEnumerable<PostInfoResponse> PostsInfo()

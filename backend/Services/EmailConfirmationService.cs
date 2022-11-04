@@ -21,10 +21,10 @@ namespace backend.Services
 	public class EmailConfirmationService
 	{
 		protected virtual SettingsProviderService _settingsProvider { get; init; }
-		protected EmailConfirmationServiceSettings _settings => _settingsProvider.EmailConfirmationServiceSettings;
+		protected virtual EmailConfirmationServiceSettings _settings => _settingsProvider.EmailConfirmationServiceSettings;
 		protected JwtService _jwtService;
 		protected SmtpClientsProviderService _smtpClientsService;
-		protected ILogger _logger;
+		protected ILogger? _logger;
 
 		protected const string emailClaimName = "EmailAddress";
 		protected const string actionClaimName = "Action";
@@ -37,14 +37,14 @@ namespace backend.Services
 			SettingsProviderService settingsProvider,
 			JwtService jwtService,
 			SmtpClientsProviderService smtpClientsService,
-			ILogger<EmailConfirmationService> logger)
+			ILogger<EmailConfirmationService>? logger)
 		{
 			this._settingsProvider = settingsProvider;
 			this._jwtService = jwtService;
 			this._smtpClientsService = smtpClientsService;
 			this._logger = logger;
 
-			_logger.LogInformation($"The instance of {nameof(EmailConfirmationService)} created.");
+			_logger?.LogInformation($"The instance of {nameof(EmailConfirmationService)} created.");
 		}
 
 		public string CreateLinkForEmail(string email)
@@ -95,7 +95,7 @@ namespace backend.Services
 				Text = emailConfirmationText + createdLink
 			};
 
-			_logger.LogInformation(
+			_logger?.LogInformation(
 				$"Telling {nameof(SmtpClientsProviderService)} " +
 				$"to send email-confirmation message to \'{userEmail}\' " +
 				$"with confirmation link \'{createdLink}\'.");

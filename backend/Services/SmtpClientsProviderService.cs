@@ -100,7 +100,7 @@ namespace backend.Services
 
 
 				_logger.LogInformation(
-						$"Successfully connected and authenticate at \'{smtpServerInfo.smtpServerUrl}\' " +
+						$"Successfully connected and authenticated at \'{smtpServerInfo.smtpServerUrl}\' " +
 						$"with username \'{smtpServerInfo.smtpServerUserName}\' using {protocol}.");
 
 				_smtpClients.Add((smtpServerInfo, newClient));

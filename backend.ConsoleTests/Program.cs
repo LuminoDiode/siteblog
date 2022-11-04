@@ -1,6 +1,8 @@
 ﻿using backend.Models.Database;
+using backend.Models.Runtime;
 using backend.Repository;
 using backend.Services;
+using backend.Tests.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Moq;
@@ -8,6 +10,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Runtime;
 using System.Security.Claims;
 using System.Text;
+using Xunit;
 
 namespace backend.ConsoleTests
 {
@@ -71,7 +74,24 @@ namespace backend.ConsoleTests
 			//	Task.Delay(1000).Wait();
 			//}
 
-			DraftService<PostDraft,BlogContext> t = new(null,new BlogContext(), x => x.PostDrafts, x => true, x => DateTime.UtcNow,null);
+			//DraftService<PostDraft,BlogContext,int> t = new(null,new BlogContext(), x => x.PostDrafts, x => true, x => DateTime.UtcNow,null);
+
+
+			Mock<SettingsProviderService> defaultSettingsProvider = new(null);
+
+			var jwtServiceSettings = new JwtServiceSettings
+			{
+				issuer = "testIssuer",
+				signingKey = long.MaxValue.ToString(),
+				tokenLifespanDays = 365
+			};
+
+			defaultSettingsProvider.SetupGet(x => x.JwtServiceSettings).Returns(jwtServiceSettings);
+
+			Mock<JwtService> defaultJwtService = new(() => new JwtService(defaultSettingsProvider.Object));
+
+			var t = defaultJwtService.Object;
+
 			Console.ReadKey();
 		}
 	}

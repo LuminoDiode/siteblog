@@ -9,7 +9,7 @@ namespace backend.Models.Database
 		[Key]
 		public int Id { get; set; }
 
-		public DateTime? UpdatedDate { get; set; }
+		public DateTime UpdatedDate { get; set; }
 
 		[ForeignKey(nameof(this.TopImage))]
 		public int? TopImageId { get; set; }

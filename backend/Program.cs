@@ -15,13 +15,13 @@ using backend.Services.Repositories;
 
 namespace backend
 {
-    class Program
+	class Program
 	{
 		public static void Main(string[] args)
 		{
 			WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 			builder.Configuration
-				.AddJsonFile("appsettings.json",false)
+				.AddJsonFile("appsettings.json", false)
 				.AddJsonFile("/run/secrets/secrets.json", true)
 				.AddEnvironmentVariables()
 				.Build();
@@ -94,6 +94,10 @@ namespace backend
 
 			builder.Services.AddSingleton<SmtpClientsProviderService>();
 			builder.Services.AddHostedService(pr => pr.GetRequiredService<SmtpClientsProviderService>());
+
+			builder.Services.AddSingleton<PostDraftService>(services => new PostDraftService(
+				services.GetRequiredService<SettingsProviderService>(), services.GetRequiredService<BlogContext>()));
+			builder.Services.AddHostedService(pr => pr.GetRequiredService<PostDraftService>());
 
 
 
