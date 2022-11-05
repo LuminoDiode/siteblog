@@ -7,7 +7,7 @@ namespace backend.Models.API.Requests
 		[Required]
 		public string Title { get; set; } = null!;
 		[Required]
-		public string Subtile { get; set; } = null!;
+		public string Subtitle { get; set; } = null!;
 		[Required]
 		public string HtmlText { get; set; } = null!;
 	}

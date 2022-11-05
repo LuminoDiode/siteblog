@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using backend.Services;
+using backend.Services.Repositories;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using backend.Models.Database;
 
 namespace backend.Controllers
 {
@@ -11,57 +15,72 @@ namespace backend.Controllers
 	[Route("api/[controller]")]
 	[Consumes("application/json")]
 	[Produces("application/json")]
-	public class PostsController
+	public class PostsController : ControllerBase
 	{
-		public PostsController()
+		protected readonly PostService _postService;
+		public PostsController(PostService postService)
 		{
-
+			_postService = postService;
 		}
 
+		#region Anonymous GET
+		[HttpGet]
+		[AllowAnonymous]
+		public async Task<IActionResult> GetPosts([FromForm][Required] PostsInfoRequest request)
+		{
+			if (request.MaxCount > byte.MaxValue) return Problem("Too many posts required.", statusCode: StatusCodes.Status403Forbidden);
+
+			return Ok(await _postService.GetPosts().Skip(request.StartIndex).Take(request.MaxCount).ToListAsync());
+		}
+		[HttpGet]
+		[AllowAnonymous]
+		public async Task<IActionResult> GetPostsByRoute([FromRoute] int? startIndex, [FromRoute] int? maxCount)
+		{
+			return await GetPosts(new PostsInfoRequest { StartIndex = startIndex ?? 0, MaxCount = maxCount ?? 30 });
+		}
 
 		[HttpGet]
 		[AllowAnonymous]
-		public IEnumerable<PostInfoResponse> PostsInfo()
+		public async Task<IActionResult> GetPost([FromForm][Required] int Id)
 		{
-			throw new NotImplementedException();
+			var found = await _postService.TryFindAsync(Id);
+			return found is not null ? Ok(found) : NotFound();
 		}
-
 		[HttpGet]
 		[AllowAnonymous]
 		[Route("{id:int}")]
-		public PostInfoResponse PostsInfo([FromRoute][Required] int Id)
+		public async Task<IActionResult> GetPostByRoute([FromRoute][Required] int Id)
 		{
-			throw new NotImplementedException();
+			return await GetPost(Id);
 		}
+		#endregion
 
-		[HttpGet]
-		[AllowAnonymous]
-		[Route("{id:int}")]
-		public PostResponse Posts([FromRoute][Required] int Id)
-		{
-			throw new NotImplementedException();
-		}
 
+		#region Authorize PUT/PATCH/DELETE
 		[HttpPut]
-		[Authorize(Roles ="admin")]
-		public IActionResult PutPost([FromForm][Required] IFormFile topImage, [FromForm][Required] AddPostRequest metadata)
+		[Authorize]
+		public IActionResult PutPost([FromForm][Required] IFormFile topImage, [FromForm][Required] AddPostRequest newPost)
 		{
-			throw new NotImplementedException();
+			if(!_postService.ValidateAndProcessPost(newPost, out var processed))
+				return Problem("Post sended to server does not satisfy the requirements.", statusCode: StatusCodes.Status403Forbidden);
+			
+
 		}
 
 		[HttpPatch]
-		[Authorize(Roles = "admin")]
+		[Authorize]
 		public IActionResult PatchPost([FromForm][Required] IFormFile topImage, [FromForm][Required] EditPostRequest metadata)
 		{
 			throw new NotImplementedException();
 		}
 
 		[HttpDelete]
-		[Authorize(Roles ="admin")]
+		[Authorize]
 		public IActionResult DeletePost([FromBody][Required] int Id)
 		{
 			throw new NotImplementedException();
 		}
+		#endregion
 
 	}
 }

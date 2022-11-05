@@ -85,7 +85,7 @@ namespace backend
 				builder.Services.AddDirectoryBrowser();
 			}
 
-			builder.Services.AddScoped<UserRepository>();
+			builder.Services.AddScoped<UserService>();
 
 			builder.Services.AddSingleton<SettingsProviderService>();
 			builder.Services.AddSingleton<FileUrnService>();

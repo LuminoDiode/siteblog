@@ -1,10 +1,12 @@
 ﻿using backend.Models.API.Login;
 using backend.Models.Database;
+using backend.Models.Runtime;
 using backend.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.DependencyInjection;
 using Org.BouncyCastle.Asn1.Ocsp;
+using System.Runtime;
 using static Duende.IdentityServer.Models.IdentityResources;
 
 namespace backend.Services.Repositories
@@ -13,24 +15,32 @@ namespace backend.Services.Repositories
     /// A scoped service providing DB interactions and some validation features.
     /// This class mainly does not validate passed data.
     /// </summary>
-    public class UserRepository
+    /// Probably will be renamed to "UserService"
+    public class UserService
     {
         protected readonly PasswordsCryptographyService _passwordsCryptographyService;
         protected readonly JwtService _jwtService;
         protected readonly EmailConfirmationService _emailConfirmationService;
         protected readonly BlogContext _blogContext;
+		protected readonly SettingsProviderService _settingsProvider;
+        protected virtual UserServiceSettings _settings => _settingsProvider.UserServiceSettings;
+        public UsernameConstraints UsernameConstraints => _settings._usernameConstraints;
+        public PasswordConstraints PasswordConstraints => _settings._passwordConstraints;
 
-        public UserRepository(
+		public UserService(
             BlogContext blogContext,
             PasswordsCryptographyService passwordsCryptographyService,
             JwtService jwtService,
-            EmailConfirmationService emailService)
+            EmailConfirmationService emailService,
+            SettingsProviderService settingsProvider)
         {
             _passwordsCryptographyService = passwordsCryptographyService;
             _jwtService = jwtService;
             _emailConfirmationService = emailService;
             _blogContext = blogContext;
-        }
+			_settingsProvider = settingsProvider;
+
+		}
 
         public async Task<User?> TryFindAsync(string emailAddress)
         {
@@ -44,80 +54,55 @@ namespace backend.Services.Repositories
 
         public async Task<bool> CheckPasswordAsync(string userEmail, string password)
         {
-            return CheckPasswordAsync(await TryFindAsync(userEmail), password);
+            return CheckPassword(await TryFindAsync(userEmail), password);
         }
         public async Task<bool> CheckPasswordAsync(int userId, string password)
         {
-            return CheckPasswordAsync(await TryFindAsync(userId), password);
+            return CheckPassword(await TryFindAsync(userId), password);
         }
-        public bool CheckPasswordAsync(User? usr, string password)
+        public bool CheckPassword(User? usr, string password)
         {
             if (usr is null || password is null) return false;
 
             return _passwordsCryptographyService.ConfirmPassword(password, usr.PasswordHash, usr.PasswordSalt);
         }
 
-        public struct UsernameConstraints
-        {
-            public int MinLen = 3;
-            public int MaxLen = 32;
-            public bool WhitespaceAllowed = false;
-            public bool NonLetterOrDigitAllowed = false;
-
-            public UsernameConstraints()
-            {
-
-            }
-        }
         public bool ValidateUsername(string username, UsernameConstraints? usernameConstraints = null)
         {
             if (string.IsNullOrEmpty(username)) return false;
 
-            if (usernameConstraints is null) usernameConstraints = new UsernameConstraints();
+            if (usernameConstraints is null) usernameConstraints = _settings._usernameConstraints;
 
-            if (username.Length < usernameConstraints.Value.MinLen
-                || username.Length > usernameConstraints.Value.MaxLen)
+            if (username.Length < usernameConstraints.minLen
+                || username.Length > usernameConstraints.maxLen)
                 return false;
 
-            if (!usernameConstraints.Value.NonLetterOrDigitAllowed)
+            if (!usernameConstraints.nonLetterOrDigitAllowed)
                 if (username.Any(x => !(char.IsLetter(x) || char.IsDigit(x))))
                     return false;
 
-            if (!usernameConstraints.Value.WhitespaceAllowed)
+            if (!usernameConstraints.whitespaceAllowed)
                 if (username.Any(x => char.IsWhiteSpace(x)))
                     return false;
 
             return true;
         }
 
-        public struct PasswordConstraints
-        {
-            public int MinLen = 6;
-            public int MaxLen = 256;
-            public bool DigitRequired = true;
-            public bool LetterRequired = true;
-
-            public PasswordConstraints()
-            {
-
-            }
-        }
-
         public bool ValidateNewPassword(string password, PasswordConstraints? passwordConstraints = null)
         {
             if (string.IsNullOrEmpty(password)) return false;
 
-            if (passwordConstraints is null) passwordConstraints = new PasswordConstraints();
+            if (passwordConstraints is null) passwordConstraints = _settings._passwordConstraints;
 
-            if (password.Length < passwordConstraints.Value.MinLen
-                || password.Length > passwordConstraints.Value.MaxLen)
+            if (password.Length < passwordConstraints.minLen
+                || password.Length > passwordConstraints.maxLen)
                 return false;
 
-            if (passwordConstraints.Value.DigitRequired)
+            if (passwordConstraints.digitRequired)
                 if (!password.Any(x => char.IsDigit(x)))
                     return false;
 
-            if (passwordConstraints.Value.LetterRequired)
+            if (passwordConstraints.letterRequired)
                 if (!password.Any(x => char.IsLetter(x)))
                     return false;
 
@@ -154,14 +139,37 @@ namespace backend.Services.Repositories
             await _emailConfirmationService.SendConfirmationEmailAsync(email);
         }
 
+        public async Task<bool> SetEmailConfirmedIfLinkIsCorrect(string link, bool newValue=true)
+        {
+            var email = this._emailConfirmationService.GetEmailFromLinkIfValid(link);
+            if (email is null) return false;
 
-        /// <summary>
-        /// Marks selected user for the deletion and saves this changes to the DB.
-        /// This call must be <see langword="await"/>ed.
-        /// </summary>
-        /// <param name="userId">Deleted user id.</param>
-        /// <returns>An operation task.</returns>
-        public async Task DeleteUserAsync(int userId)
+			return await SetEmailConfirmed(email, newValue);
+		}
+		public async Task<bool> SetEmailConfirmedIfJwtIsCorrect(string jwt, bool newValue = true)
+		{
+			var email = this._emailConfirmationService.GetEmailFromJwtIfValid(jwt);
+			if (email is null) return false;
+
+			return await SetEmailConfirmed(email, newValue);
+		}
+        public async Task<bool> SetEmailConfirmed(string email, bool newValue = true)
+        {
+			var found = await this.TryFindAsync(email);
+			if (found is null) return false;
+
+			found.EmailConfirmed = newValue;
+			await _blogContext.SaveChangesAsync();
+			return true;
+		}
+
+			/// <summary>
+			/// Marks selected user for the deletion and saves this changes to the DB.
+			/// This call must be <see langword="await"/>ed.
+			/// </summary>
+			/// <param name="userId">Deleted user id.</param>
+			/// <returns>An operation task.</returns>
+			public async Task DeleteUserAsync(int userId)
         {
             await DeleteUserAsync(await TryFindAsync(userId));
         }
@@ -192,20 +200,20 @@ namespace backend.Services.Repositories
         }
 
 
-        /// <summary>
-        /// Creates LoginResponse model for selected user, including<br/>
-        /// <see cref="User.Id"/>,
-        /// <see cref="User.Name"/>,
-        /// <see cref="User.UserRole"/>,
-        /// <see cref="User.EmailConfirmed"/>,<br/>
-        /// Authorize bearer from  <see cref="JwtService"/>,<br/>
-        /// Notifications array passed as the params.
-        /// <see cref="User.Id"/>
-        /// </summary>
-        /// <param name="usr">Selected user.</param>
-        /// <param name="humanNotifications">Selected notifications.</param>
-        /// <returns>An operation task.</returns>
-        public LoginResponse CreateLoginResponse(User usr, params string[] humanNotifications)
+		/// <summary>
+		/// Creates LoginResponse model for selected user, including<br/>
+		/// <see cref="User.Id"/>,<br/>
+		/// <see cref="User.Name"/>,<br/>
+		/// <see cref="User.UserRole"/>,<br/>
+		/// <see cref="User.EmailConfirmed"/>,<br/>
+		/// Authorize bearer from  <see cref="JwtService"/>,<br/>
+		/// Notifications array passed as the params.
+		/// <see cref="User.Id"/>
+		/// </summary>
+		/// <param name="usr">Selected user.</param>
+		/// <param name="humanNotifications">Selected notifications.</param>
+		/// <returns>An operation task.</returns>
+		public LoginResponse CreateLoginResponse(User usr, params string[] humanNotifications)
         {
             return new LoginResponse
             {

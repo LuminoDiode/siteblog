@@ -19,6 +19,16 @@ using backend.Services.Repositories;
 
 namespace backend.Controllers
 {
+	public static class ControllerExtensions
+	{
+		public static bool CanUserAccessAccount(this ControllerBase	 ctr, int id) =>
+				((ctr.User.FindFirst(nameof(backend.Models.Database.User.Id))?.Value
+					.Equals(id.ToString()) ?? false)
+				|| (ctr.User.FindFirst(nameof(backend.Models.Database.User.UserRole))?.Value
+					.Equals(backend.Models.Database.User.UserRoleAdminConst) ?? false)
+				);
+	}
+
 	[ApiController]
 	[Route("api/[controller]")]
 	[Consumes("application/json")]
@@ -29,13 +39,11 @@ namespace backend.Controllers
 		protected readonly ILogger _logger;
 		protected readonly JwtService _jwtService;
 		protected readonly PasswordsCryptographyService _passwordsCryptographyService;
-		protected readonly UserRepository _userService;
-		protected readonly UserRepository.PasswordConstraints _passwordConstraints;
-		protected readonly UserRepository.UsernameConstraints _usernameConstraints;
+		protected readonly UserService _userService;
 
 
 		public AccountController(
-			UserRepository userService,
+			UserService userService,
 			JwtService jwtService,
 			PasswordsCryptographyService passwordsCryptographyService,
 			IConfiguration config,
@@ -46,21 +54,18 @@ namespace backend.Controllers
 			_jwtService = jwtService;
 			_passwordsCryptographyService = passwordsCryptographyService;
 			_userService = userService;
-
-			_passwordConstraints = new UserRepository.PasswordConstraints();
-			_usernameConstraints = new UserRepository.UsernameConstraints();
 		}
 
 
 		[HttpGet]
 		[AllowAnonymous]
 		[Route("passwordConstraints")]
-		public IActionResult GetPasswordConstraints() => Ok(this._passwordConstraints);
+		public IActionResult GetPasswordConstraints() => Ok(this._userService.PasswordConstraints);
 
 		[HttpGet]
 		[AllowAnonymous]
 		[Route("usernameConstraints")]
-		public IActionResult GetUsernameConstraints() => Ok(this._usernameConstraints);
+		public IActionResult GetUsernameConstraints() => Ok(this._userService.UsernameConstraints);
 
 		[HttpGet]
 		[Authorize]
@@ -76,7 +81,7 @@ namespace backend.Controllers
 			if (usr is null)
 				return new NotFoundObjectResult(new HumanResponse("Such login was not found on the server."));
 
-			if (!_userService.CheckPasswordAsync(usr, request.Password))
+			if (!_userService.CheckPassword(usr, request.Password))
 				return new UnauthorizedObjectResult(new HumanResponse("Wrong password."));
 
 			return Ok(_userService.CreateLoginResponse(usr));
@@ -91,7 +96,7 @@ namespace backend.Controllers
 			if (usr is not null)
 				return new ConflictObjectResult(new HumanResponse("Such login was found on the server."));
 
-			if (!_userService.ValidateNewPassword(request.Password, this._passwordConstraints))
+			if (!_userService.ValidateNewPassword(request.Password))
 				return BadRequest(new HumanResponse("Password does not match the requirements."));
 
 			var created = await _userService.CreateNewUserAsync(request);
@@ -99,14 +104,6 @@ namespace backend.Controllers
 
 			return await Login(new LoginRequest { Email = request.Email, Password = request.Password });
 		}
-
-		[NonAction]
-		protected bool canAccessAccount(int id) =>
-				((this.User.FindFirst(nameof(backend.Models.Database.User.Id))?.Value
-					.Equals(id.ToString()) ?? false)
-				|| (this.User.FindFirst(nameof(backend.Models.Database.User.UserRole))?.Value
-					.Equals(backend.Models.Database.User.UserRoleAdminConst) ?? false)
-				);
 
 		[HttpPatch]
 		[Authorize]
@@ -129,7 +126,7 @@ namespace backend.Controllers
 
 
 			// checking the access
-			if (!canAccessAccount(patchRequest.Id.Value))
+			if (!this.CanUserAccessAccount(patchRequest.Id.Value))
 				return Forbid();
 
 			// checking if the entity exists
@@ -177,7 +174,7 @@ namespace backend.Controllers
 		public async Task<IActionResult> Delete([FromBody][Required] int id)
 		{
 			// checking the access
-			if (!canAccessAccount(id))
+			if (!this.CanUserAccessAccount(id))
 				return Forbid();
 
 

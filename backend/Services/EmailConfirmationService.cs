@@ -81,6 +81,18 @@ namespace backend.Services
 				return null;
 			}
 		}
+		public string? GetEmailFromJwtIfValid(string jwt)
+		{
+			var payload = _jwtService.ValidateJwtToken(jwt);
+			if (payload.FindFirstValue(actionClaimName) == emailConfirmationClaimName)
+			{
+				return payload.FindFirstValue(emailClaimName);
+			}
+			else
+			{
+				return null;
+			}
+		}
 
 		public async Task SendConfirmationEmailAsync(string userEmail)
 		{

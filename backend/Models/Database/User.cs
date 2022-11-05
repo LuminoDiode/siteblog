@@ -7,6 +7,7 @@ namespace backend.Models.Database
         public const string UserRoleUserConst = "user";
         public const string UserRoleModeratorConst = "moderator";
 		public const string UserRoleAdminConst = "admin";
+       // public const string UserRoleClaimNameConst = "UserRole"; //use nameof
 		public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public int Id { get; set; }
         public string? Name { get; set; }

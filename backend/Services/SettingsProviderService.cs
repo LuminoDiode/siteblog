@@ -27,6 +27,10 @@ namespace backend.Services
 			=> _configuration.GetSection(nameof(DraftServiceSettings)).Get<DraftServiceSettings>();
 		public virtual PostDraftServiceSettings PostDraftServiceSettings
 			=> _configuration.GetSection(nameof(PostDraftServiceSettings)).Get<PostDraftServiceSettings>();
+		public virtual UserServiceSettings UserServiceSettings
+			=> _configuration.GetSection(nameof(UserServiceSettings)).Get<UserServiceSettings>();
+		public virtual PostServiceSettings PostServiceSettings
+			=> _configuration.GetSection(nameof(PostServiceSettings)).Get<PostServiceSettings>();
 
 		public SettingsProviderService(IConfiguration configuration)
 		{

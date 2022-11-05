@@ -32,8 +32,6 @@ namespace backend.Models.Database
 		public Post(string Title, string TextHTML)
 			:base(Title, TextHTML)
 		{
-			this.Title = Title; // those 2 are duplicating base class, but... I dont care?
-			this.TextHTML = TextHTML;
 			CreatedDate = DateTime.UtcNow;
 		}
 	}
