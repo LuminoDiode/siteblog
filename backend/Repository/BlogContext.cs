@@ -37,6 +37,7 @@ namespace backend.Repository
 		}
 
 		public DbSet<Image> Images { get; set; } = null!;
+		public DbSet<PostDraft> PostDrafts { get; set; } = null!;
 		public DbSet<Post> Posts { get; set; } = null!;
 		public DbSet<Service> Services { get; set; } = null!;
 		public DbSet<User> Users { get; set; } = null!;

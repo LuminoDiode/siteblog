@@ -9,6 +9,7 @@
 
   <ItemGroup>
 		<PackageReference Include="Moq" Version="4.18.1" />
+		<ProjectReference Include="..\backend.Tests\backend.Tests.csproj" />
     <ProjectReference Include="..\backend\backend.csproj" />
   </ItemGroup>
 

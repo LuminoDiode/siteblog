@@ -1,4 +1,6 @@
-﻿namespace backend.Models.API.Post
+﻿using backend.Models.API.Common;
+
+namespace backend.Models.API.Post
 {
     public class PostInfoResponse
     {

@@ -1,4 +1,6 @@
-﻿namespace backend.Models.API.Service
+﻿using backend.Models.API.Common;
+
+namespace backend.Models.API.Service
 {
     public class ServiceInfoResponse
     {

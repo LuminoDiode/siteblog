@@ -1,53 +1,40 @@
 ﻿using backend.Models.Runtime;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
 using Flurl;
-using System.Security.Cryptography;
-using System.Security.Claims;
 using MimeKit;
-using MailKit.Net.Smtp;
-using Duende.IdentityServer.Models;
-using static Duende.IdentityServer.Models.IdentityResources;
+using System.Security.Claims;
 
 namespace backend.Services
 {
-
-	/*	Класс создает ссылки для подтверждения почты.
-	 *	Ссылки несут в себе ID пользователя + случайный набор символов
-	 *	с целью исключить возможно связи известных данных с 
-	 *	секретным ключем подписи.
-	 *  Сервис использует название домена из appsettings. 
-	 */
-	public class EmailConfirmationService
+	public class ResetPasswordEmailService
 	{
 		protected virtual SettingsProviderService _settingsProvider { get; init; }
-		protected virtual EmailConfirmationServiceSettings _settings => _settingsProvider.EmailConfirmationServiceSettings;
+		protected ResetPasswordServiceSettings _settings => _settingsProvider.ResetPasswordServiceSettings;
 		protected JwtService _jwtService;
 		protected SmtpClientsProviderService _smtpClientsService;
-		protected ILogger? _logger;
+		protected ILogger _logger;
 
 		protected const string emailClaimName = "EmailAddress";
 		protected const string actionClaimName = "Action";
-		protected const string emailConfirmationClaimName = "EmailConfirmation";
+		protected const string passwordResetClaimName = "PasswordReset";
 		protected const string noReplyString = "no-reply";
 		protected const string emailConfirmationSubject = "email-confirmation";
 		protected const string emailConfirmationText = "Procceed the link to confirm your email: ";
 
-		public EmailConfirmationService(
+		public ResetPasswordEmailService(
 			SettingsProviderService settingsProvider,
 			JwtService jwtService,
 			SmtpClientsProviderService smtpClientsService,
-			ILogger<EmailConfirmationService>? logger)
+			ILogger<ResetPasswordEmailService> logger)
 		{
 			this._settingsProvider = settingsProvider;
 			this._jwtService = jwtService;
 			this._smtpClientsService = smtpClientsService;
 			this._logger = logger;
 
-			_logger?.LogInformation($"The instance of {nameof(EmailConfirmationService)} created.");
+			_logger.LogInformation($"The instance of {nameof(ResetPasswordEmailService)} created.");
 		}
 
-		public string CreateLinkForEmail(string email)
+		public string CreateLinkForReset(string email)
 		{
 			var generatedJwt = _jwtService.GenerateJwtToken(
 				new Claim[] {
@@ -57,7 +44,7 @@ namespace backend.Services
 					 * созданного для подтверждения почты, ибо подпись вычисляется
 					 * как хеш клаймов с ключем (HMAC).
 					 */
-					new Claim(actionClaimName,emailConfirmationClaimName)
+					new Claim(actionClaimName,passwordResetClaimName)
 				},
 				DateTime.UtcNow.AddDays(_settings.linkLifespanDays)
 			);
@@ -72,19 +59,7 @@ namespace backend.Services
 		public string? GetEmailFromLinkIfValid(string link)
 		{
 			var payload = _jwtService.ValidateJwtToken(link.Substring(link.LastIndexOf('/') + 1));
-			if (payload.FindFirstValue(actionClaimName) == emailConfirmationClaimName)
-			{
-				return payload.FindFirstValue(emailClaimName);
-			}
-			else
-			{
-				return null;
-			}
-		}
-		public string? GetEmailFromJwtIfValid(string jwt)
-		{
-			var payload = _jwtService.ValidateJwtToken(jwt);
-			if (payload.FindFirstValue(actionClaimName) == emailConfirmationClaimName)
+			if (payload.FindFirstValue(actionClaimName) == passwordResetClaimName)
 			{
 				return payload.FindFirstValue(emailClaimName);
 			}
@@ -94,10 +69,10 @@ namespace backend.Services
 			}
 		}
 
-		public async Task SendConfirmationEmailAsync(string userEmail)
+		public async Task SendResetPasswordEmailAsync(string userEmail)
 		{
 			var emailMessage = new MimeMessage();
-			var createdLink = CreateLinkForEmail(userEmail);
+			var createdLink = CreateLinkForReset(userEmail);
 
 			emailMessage.From.Add(new MailboxAddress(String.Empty, noReplyString + '@' + _settings.ownDomain));
 			emailMessage.To.Add(new MailboxAddress(String.Empty, userEmail));
@@ -107,7 +82,8 @@ namespace backend.Services
 				Text = emailConfirmationText + createdLink
 			};
 
-			_logger?.LogInformation(
+
+			_logger.LogInformation(
 				$"Telling {nameof(SmtpClientsProviderService)} " +
 				$"to send email-confirmation message to \'{userEmail}\' " +
 				$"with confirmation link \'{createdLink}\'.");
@@ -116,3 +92,4 @@ namespace backend.Services
 		}
 	}
 }
+

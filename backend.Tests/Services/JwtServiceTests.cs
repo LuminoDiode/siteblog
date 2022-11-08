@@ -9,62 +9,72 @@ using backend.Models.Runtime;
 using backend.Services;
 using Moq;
 using System.Security.Claims;
+using Moq.Protected;
+using System.Runtime;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Xunit.Abstractions;
 
 namespace backend.Tests.Services
 {
 	public class JwtServiceTests
 	{
+		public Mock<SettingsProviderService> defaultSettingsProviderMock;
+		public JwtService defaultJwtService;
+		public JwtServiceSettings defaultSettings;
+
+		public JwtServiceTests()
+		{
+			defaultSettings = new JwtServiceSettings
+			{
+				issuer = "testIssuer",
+				signingKey = long.MaxValue.ToString(),
+				tokenLifespanDays = 365
+			};
+
+			defaultSettingsProviderMock = new(null);
+			defaultSettingsProviderMock.SetupGet(x=>x.JwtServiceSettings).Returns(defaultSettings);
+
+			defaultJwtService = new JwtService(defaultSettingsProviderMock.Object);
+		}
+
+
 		[Fact]
 		public void CanCreateInstance()
 		{
-			Mock<JwtServiceSettingsProvider> settingsProvider = new(null);
-			settingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_ME");
-			settingsProvider.SetupGet(x => x.tokenLifespanDays).Returns(360);
-			Mock<SettingsProviderService> settingService = new(null);
-			settingService.SetupGet(x => x.JwtServiceSettings).Returns(settingsProvider.Object);
-
-			var service = new JwtService(settingService.Object);
-
-			Assert.NotNull(service);
+			Assert.NotNull(defaultJwtService);
 		}
 
 
 		[Fact]
 		public void CanCreateAndValidate()
 		{
-			Mock<JwtServiceSettingsProvider> settingsProvider = new(null);
-			settingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_MEOVERRIDE_ME");
-			settingsProvider.SetupGet(x => x.tokenLifespanDays).Returns(360);
-			Mock<SettingsProviderService> settingService = new(null);
-			settingService.SetupGet(x => x.JwtServiceSettings).Returns(settingsProvider.Object);
+			var service = defaultJwtService;
 
-			var service = new JwtService(settingService.Object);
+			Assert.NotNull(service);
 
 			var token = service.GenerateJwtToken(new Claim[]
 			{
 				new Claim("username","qwerty"),
 				new Claim("userrole","admin")
 			});
-			var decoded = service.ValidateJwtToken(token);
-			Assert.NotNull(decoded);
 
+			var decoded = service.ValidateJwtToken(token);
+
+			Assert.NotNull(decoded);
 			Assert.Equal("qwerty", decoded.FindFirst("username").Value);
-			Assert.Equal("admin",decoded.FindFirst("userrole").Value);
+			Assert.Equal("admin", decoded.FindFirst("userrole").Value);
 		}
 
 		[Fact]
 		public void CannotValidateInvalidToken()
 		{
-			Mock<JwtServiceSettingsProvider> settingsProvider = new(null);
-			settingsProvider.SetupGet(x => x.signingKey).Returns("OVERRIDE_ME");
-			settingsProvider.SetupGet(x => x.tokenLifespanDays).Returns(360);
-			Mock<SettingsProviderService> settingService = new(null);
-			settingService.SetupGet(x => x.JwtServiceSettings).Returns(settingsProvider.Object);
+			var service = defaultJwtService;
 
-			var service = new JwtService(settingService.Object);
+			Assert.NotNull(service);
 
 			var token = "myrandomtoken.AndTheSignPart.AndJustSomethingElse";
-			Assert.Throws<System.ArgumentException>(()=> service.ValidateJwtToken(token));
+			Assert.Throws<System.ArgumentException>(() => service.ValidateJwtToken(token));
 		}
 	}
 }
