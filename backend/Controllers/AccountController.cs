@@ -21,10 +21,14 @@ namespace backend.Controllers
 {
 	public static class ControllerExtensions
 	{
-		public static bool CanUserAccessAccount(this ControllerBase	 ctr, int id) =>
+		public static bool CanUserAccessAccount(this ControllerBase	 ctr, int? id) =>
 				((ctr.User.FindFirst(nameof(backend.Models.Database.User.Id))?.Value
 					.Equals(id.ToString()) ?? false)
 				|| (ctr.User.FindFirst(nameof(backend.Models.Database.User.UserRole))?.Value
+					.Equals(backend.Models.Database.User.UserRoleAdminConst) ?? false)
+				);
+		public static bool IsUserAdmin(this ControllerBase ctr, int? id) =>
+				((ctr.User.FindFirst(nameof(backend.Models.Database.User.UserRole))?.Value
 					.Equals(backend.Models.Database.User.UserRoleAdminConst) ?? false)
 				);
 	}

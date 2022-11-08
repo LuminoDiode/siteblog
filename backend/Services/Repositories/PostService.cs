@@ -113,13 +113,13 @@ namespace backend.Services.Repositories
 			return true;
 		}
 
-		public async Task<EntityEntry<Post>> AddPostAsync(AddPostRequest newPost, int? topImageId = null, int? ownerUserId = null)
+		public async Task<EntityEntry<Post>> AddPostAsync(AddPostRequest newPost, int? ownerUserId = null)
 		{
 			Post toDb = new(newPost.Title,newPost.HtmlText)
 			{
 				CreatedDate = DateTime.UtcNow,
 				UpdatedDate = DateTime.UtcNow,
-				TopImageId = topImageId,
+				TopImageId = newPost.topImageId,
 				OwnerUserId = ownerUserId,
 				//Title = newPost.Title,
 				//TextHTML = newPost.HtmlText,
@@ -128,6 +128,20 @@ namespace backend.Services.Repositories
 
 			var entry  = this._blogContext.Posts.Add(toDb);
 			await this._blogContext.SaveChangesAsync();
+			return entry;
+		}
+
+		public async Task<EntityEntry<Post>?> PatchPostIfExistsAsync(EditPostRequest editedPost, int? ownerUserId = null)
+		{
+			var found = await _blogContext.Posts.FindAsync(editedPost.Id);
+			if (found is null) return null;
+
+			var entry = _blogContext.Entry(found);
+
+			entry.CurrentValues.SetValues(editedPost);
+			entry.Entity.OwnerUserId = ownerUserId;
+			await _blogContext.SaveChangesAsync();
+
 			return entry;
 		}
 	}

@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
 using Castle.Core.Logging;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace backend.Tests.Services
 {

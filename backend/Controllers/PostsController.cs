@@ -8,6 +8,7 @@ using backend.Services.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using backend.Models.Database;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -59,19 +60,53 @@ namespace backend.Controllers
 		#region Authorize PUT/PATCH/DELETE
 		[HttpPut]
 		[Authorize]
-		public IActionResult PutPost([FromForm][Required] IFormFile topImage, [FromForm][Required] AddPostRequest newPost)
+		public async Task<IActionResult> PutPost([FromForm][Required] AddPostRequest newPost, [FromForm] int? topImageId)
 		{
 			if(!_postService.ValidateAndProcessPost(newPost, out var processed))
 				return Problem("Post sended to server does not satisfy the requirements.", statusCode: StatusCodes.Status403Forbidden);
-			
 
+			if (processed is null) throw new AggregateException();
+			processed.topImageId = topImageId;
+
+			var added = await _postService.AddPostAsync(processed, int.Parse(this.User.FindFirstValue(nameof(backend.Models.Database.User.Id))));
+
+			return Ok(added.Entity);
 		}
 
 		[HttpPatch]
 		[Authorize]
-		public IActionResult PatchPost([FromForm][Required] IFormFile topImage, [FromForm][Required] EditPostRequest metadata)
+		public async Task< IActionResult> PatchPost([FromBody][Required] EditPostRequest editedPost)
 		{
-			throw new NotImplementedException();
+			var found = await _postService.TryFindAsync(editedPost.Id);
+			if(found is null)
+			{
+				return NotFound();
+			}
+
+			if (!this.CanUserAccessAccount(found.OwnerUserId))
+			{
+				return Problem("You have no access to this entity.", statusCode: StatusCodes.Status403Forbidden);
+			}
+
+			if(!_postService.ValidateAndProcessPost(editedPost, out var processed))
+			{
+				return Problem("Post sended to server does not satisfy the requirements.", statusCode: StatusCodes.Status403Forbidden);
+			}
+
+			if(processed is null) throw new AggregateException();
+			editedPost.Title = processed.Title;
+			editedPost.Subtitle = processed.Subtitle;
+			editedPost.HtmlText = processed.HtmlText;
+
+			var edited = await _postService.PatchPostIfExistsAsync(editedPost);
+			if(edited is not null)
+			{
+				return Ok(edited.Entity);
+			}
+			else
+			{
+				return NotFound();
+			}
 		}
 
 		[HttpDelete]
@@ -81,6 +116,5 @@ namespace backend.Controllers
 			throw new NotImplementedException();
 		}
 		#endregion
-
 	}
 }
